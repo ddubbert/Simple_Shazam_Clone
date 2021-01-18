@@ -6,30 +6,27 @@
 
 <script lang="ts">
 import {Component, Prop, Vue, Watch} from 'vue-property-decorator';
-import {SpectrogramPoint} from '@/@types/Signal'
+import {Histogram} from '@/models/SongDatabase'
 
 @Component
-export default class ConstellationMap extends Vue {
+export default class OffsetHistogram extends Vue {
   @Prop() private cWidth!: number;
   @Prop() private cHeight!: number;
   @Prop() private cellSize!: number;
-  @Prop() private constellationPoints!: SpectrogramPoint[];
-  @Prop() private maxTime!: number;
-  @Prop() private sampleRate!: number;
+  @Prop() private histogram!: Histogram;
 
   drawTimeOut: number | undefined;
 
   fontSize = (this.cellSize >= 20) ? this.cellSize : this.cellSize * 2;
 
   drawPoints(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
-    if(this.constellationPoints.length > 0) {
+    if(this.histogram && Object.keys(this.histogram.valueAmounts).length > 0) {
       const verticalBase = canvas.height - this.fontSize - this.cellSize * 2;
       const horizontalBase = this.fontSize + this.cellSize;
       const maxDrawWidth = canvas.width - this.fontSize * 2 - this.cellSize * 2;
       const maxDrawHeight = verticalBase - this.fontSize - this.cellSize;
-      const xStepSize = maxDrawWidth / (this.constellationPoints.length + 1);
-      const maxFrequency = this.sampleRate / 2;
-      //const frequencyRange = this.sampleRate / 2; // this.spectrums[0].length;
+      const amountDifferentOffsets = Object.keys(this.histogram.valueAmounts).length;
+      const xStepSize = maxDrawWidth / amountDifferentOffsets;
 
       context.save();
       context.beginPath();
@@ -38,14 +35,16 @@ export default class ConstellationMap extends Vue {
       context.fillStyle = '#000000';
 
       context.moveTo(this.cellSize + this.fontSize, verticalBase);
-      this.constellationPoints.forEach((specPoint, i) => {
+      for (let x = 0; x < amountDifferentOffsets; x += 1) {
+        const currentOffset = Object.keys(this.histogram.valueAmounts)[x];
+        const barHeight = (+currentOffset / this.histogram.maxCount) * maxDrawHeight;
         context.fillRect(
-            horizontalBase + xStepSize * (i + 1),
-            verticalBase - (specPoint.point.frequency / maxFrequency) * maxDrawHeight,
-            2,
-            2,
+            horizontalBase + (x * xStepSize),
+            verticalBase - barHeight,
+            xStepSize,
+            barHeight,
         );
-      });
+      }
 
       context.stroke();
       context.restore();
@@ -58,6 +57,7 @@ export default class ConstellationMap extends Vue {
     const verticalBase = canvas.height - this.fontSize - this.cellSize * 2;
     const horizontalBase = this.fontSize + this.cellSize;
     const maxDrawWidth = canvas.width - this.fontSize * 2 - this.cellSize * 2;
+    const maxDrawHeight = verticalBase - this.fontSize - this.cellSize;
 
     context.save();
     context.beginPath();
@@ -73,23 +73,26 @@ export default class ConstellationMap extends Vue {
     context.moveTo(horizontalBase, canvas.height - this.fontSize);
     context.lineTo(horizontalBase, this.fontSize);
 
-    if(this.constellationPoints.length > 0) {
-      const xStepSize = maxDrawWidth / this.maxTime;
+    if(this.histogram && Object.keys(this.histogram.valueAmounts).length > 0) {
+      const amountDifferentOffsets = Object.keys(this.histogram.valueAmounts).length;
+      const xStepSize = maxDrawWidth / amountDifferentOffsets;
+      const yStepSize = maxDrawHeight / 5;
 
-      for (let x = 0; x < this.maxTime; x += 1) {
+      for (let x = 0; x < amountDifferentOffsets; x += 1) {
+        // const currentOffset = Object.keys(this.histogram.valueAmounts)[x];
         context.moveTo(x * xStepSize + horizontalBase, verticalBase + this.cellSize / 2);
         context.lineTo(x * xStepSize + horizontalBase, verticalBase - this.cellSize / 2);
 
-        if(x > 0) {
+        /*if(x > 0) {
           context.fillText(
-              `${x}`,
-              x * xStepSize + horizontalBase,
+              `${currentOffset}`,
+              horizontalBase + (x * xStepSize) - (xStepSize / 2),
               verticalBase + this.fontSize / 1.5 + this.cellSize / 2,
           )
-        }
+        }*/
       }
 
-      for (let y = this.fontSize + this.cellSize; y < verticalBase; y += this.cellSize * 2) {
+      for (let y = verticalBase; y > this.fontSize + this.cellSize; y -= yStepSize) {
         context.moveTo(horizontalBase - this.cellSize / 2, y);
         context.lineTo(horizontalBase + this.cellSize / 2, y);
       }
@@ -110,22 +113,17 @@ export default class ConstellationMap extends Vue {
     context.fill()
 
     context.font = `${this.fontSize}px Arial`;
-    context.fillText('Time (s)', canvas.width / 2, canvas.height - this.fontSize * 0.25);
+    context.fillText('Offset Song', canvas.width / 2, canvas.height - this.fontSize * 0.25);
 
     context.translate(this.fontSize, (verticalBase - this.fontSize) / 2);
     context.rotate(-Math.PI/2);
-    context.fillText('Frequency (Hz)', 0, 0);
+    context.fillText('Offset Sample', 0, 0);
     context.restore();
   }
 
   drawGrid() {
     const canvas = this.$refs.waveCanvas as HTMLCanvasElement;
     const context = canvas.getContext('2d');
-
-    const verticalBase = canvas.height - this.fontSize - this.cellSize * 2;
-    const horizontalBase = this.fontSize + this.cellSize;
-    const maxDrawWidth = canvas.width - this.fontSize * 2 - this.cellSize * 2;
-    const maxDrawHeight = verticalBase - this.fontSize - this.cellSize;
 
     if (context !== null) {
       context.beginPath();
@@ -154,9 +152,6 @@ export default class ConstellationMap extends Vue {
       context.lineTo(0, canvas.height);
       context.lineTo(0, 0);
       context.stroke();
-
-      context.fillStyle = 'rgb(255,255,255)';
-      context.fillRect(horizontalBase, this.cellSize + this.fontSize, maxDrawWidth, maxDrawHeight);
 
       this.drawPoints(canvas, context);
     }
@@ -187,23 +182,14 @@ export default class ConstellationMap extends Vue {
     window.removeEventListener('resize', this.onResize);
   }
 
-  @Watch("constellationPoints")
+  @Watch("histogram")
   updateSpec() {
     clearTimeout(this.drawTimeOut)
     this.drawTimeOut = setTimeout(() => {
-      console.log("Changed Constellation Points");
+      console.log("Changed Offset Histogram Values");
       this.onResize();
     }, 3000);
   }
-
-  /*@Watch("maxMag")
-  updateMaxMag() {
-    clearTimeout(this.drawTimeOut)
-    this.drawTimeOut = setTimeout(() => {
-      console.log("Change");
-      this.onResize();
-    }, 3000);
-  }*/
 }
 </script>
 

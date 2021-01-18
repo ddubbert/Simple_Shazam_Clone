@@ -8,21 +8,20 @@ export interface SpectrumData {
   freqMagPairs: FreqMagPair[];
 }
 
+export interface SpectrogramPoint {
+  point: FreqMagPair;
+  time: number;
+}
+
 export interface SpectrogramData {
-  maxPairs: FreqMagPair[];
+  maxPairs: SpectrogramPoint[];
   maxMag: number;
   windowSpectrums: FreqMagPair[][];
 }
 
 export interface HashPair {
-  first: {
-    point: FreqMagPair;
-    time: number;
-  };
-  second: {
-    point: FreqMagPair;
-    time: number;
-  };
+  first: SpectrogramPoint;
+  second: SpectrogramPoint;
 }
 
 export interface HashToken {

@@ -10,7 +10,6 @@ import {FreqMagPair} from '@/@types/Signal'
 
 @Component
 export default class FreqChart extends Vue {
-  @Prop() private msg!: string;
   @Prop() private cWidth!: number;
   @Prop() private cHeight!: number;
   @Prop() private cellSize!: number;
@@ -18,7 +17,7 @@ export default class FreqChart extends Vue {
   @Prop() private maxMag!: number;
   @Prop() private sampleRate!: number;
 
-  drawTimeOut: number | null = null;
+  drawTimeOut: number | undefined;
 
   fontSize = (this.cellSize >= 20) ? this.cellSize : this.cellSize * 2;
 
@@ -74,7 +73,7 @@ export default class FreqChart extends Vue {
         context.lineTo(x * xStepSize + horizontalBase, verticalBase + this.cellSize / 2);
 
         context.fillText(
-            Math.floor(x * shownBinSize),
+            `${Math.floor(x * shownBinSize)}`,
             x * xStepSize + horizontalBase,
             verticalBase + this.fontSize / 1.5 + this.cellSize / 2,
         )
@@ -84,7 +83,7 @@ export default class FreqChart extends Vue {
     context.moveTo(horizontalBase, canvas.height - this.fontSize);
     context.lineTo(horizontalBase, this.fontSize);
 
-    for (let y = this.fontSize + this.cellSize; y < verticalBase; y += this.cellSize * 2) {
+    for (let y = verticalBase; y > this.fontSize + this.cellSize; y -= this.cellSize * 2) {
       context.moveTo(horizontalBase - this.cellSize / 2, y);
       context.lineTo(horizontalBase + this.cellSize / 2, y);
     }
@@ -177,7 +176,7 @@ export default class FreqChart extends Vue {
   updateSpec() {
     clearTimeout(this.drawTimeOut)
     this.drawTimeOut = setTimeout(() => {
-      console.log("Change");
+      console.log("Changed Spectrum");
       this.onResize();
     }, 3000);
   }
@@ -186,7 +185,6 @@ export default class FreqChart extends Vue {
   updateMaxMag() {
     clearTimeout(this.drawTimeOut)
     this.drawTimeOut = setTimeout(() => {
-      console.log("Change");
       this.onResize();
     }, 3000);
   }

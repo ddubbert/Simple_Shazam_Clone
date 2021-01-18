@@ -10,7 +10,6 @@ import {FreqMagPair} from '@/@types/Signal'
 
 @Component
 export default class Spectrogram extends Vue {
-  @Prop() private msg!: string;
   @Prop() private cWidth!: number;
   @Prop() private cHeight!: number;
   @Prop() private cellSize!: number;
@@ -18,7 +17,7 @@ export default class Spectrogram extends Vue {
   @Prop() private maxTime!: number;
   @Prop() private maxMag!: number;
 
-  drawTimeOut: number | null = null;
+  drawTimeOut: number | undefined;
 
   fontSize = (this.cellSize >= 20) ? this.cellSize : this.cellSize * 2;
 
@@ -41,8 +40,8 @@ export default class Spectrogram extends Vue {
       this.spectrums.forEach((spectrum, i) => {
         spectrum.forEach((pair, j) => {
           const relativePower = Math.min(pair.magnitude / this.maxMag, 1);
-          const colorValue = relativePower * 255;
-          context.fillStyle = `rgba(${colorValue}, ${colorValue}, ${colorValue}, ${relativePower})`;
+          const colorValue = (1 - relativePower) * 255;
+          context.fillStyle = `rgb(${colorValue}, ${colorValue}, ${colorValue})`;
           context.fillRect(
               horizontalBase + xStepSize * (i + 1),
               verticalBase - j * yStepSize,
@@ -196,7 +195,7 @@ export default class Spectrogram extends Vue {
   updateSpec() {
     clearTimeout(this.drawTimeOut)
     this.drawTimeOut = setTimeout(() => {
-      console.log("Change");
+      console.log("Changed Spectrogram");
       this.onResize();
     }, 3000);
   }
@@ -205,7 +204,6 @@ export default class Spectrogram extends Vue {
   updateMaxMag() {
     clearTimeout(this.drawTimeOut)
     this.drawTimeOut = setTimeout(() => {
-      console.log("Change");
       this.onResize();
     }, 3000);
   }

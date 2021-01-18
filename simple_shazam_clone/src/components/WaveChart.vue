@@ -9,7 +9,6 @@ import {Component, Prop, Vue, Watch} from 'vue-property-decorator';
 
 @Component
 export default class WaveChart extends Vue {
-  @Prop() private msg!: string;
   @Prop() private cWidth!: number;
   @Prop() private cHeight!: number;
   @Prop() private cellSize!: number;
@@ -18,7 +17,7 @@ export default class WaveChart extends Vue {
   @Prop() private sampleRate!: number;
   @Prop() private maxAmp!: number;
 
-  drawTimeOut: number | null = null;
+  drawTimeOut: number | undefined;
 
   fontSize = (this.cellSize >= 20) ? this.cellSize : this.cellSize * 2;
 
@@ -103,7 +102,7 @@ export default class WaveChart extends Vue {
 
     context.translate(this.fontSize, (verticalBase - this.fontSize) / 2);
     context.rotate(-Math.PI/2);
-    context.fillText('Amplitude', 0, 0);
+    context.fillText('Power', 0, 0);
     context.restore();
   }
 
@@ -172,7 +171,7 @@ export default class WaveChart extends Vue {
   updateDraw() {
     clearTimeout(this.drawTimeOut)
     this.drawTimeOut = setTimeout(() => {
-      console.log("Change");
+      console.log("Changed TimeDomain");
       this.onResize();
     }, 3000);
   }

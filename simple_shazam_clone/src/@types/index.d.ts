@@ -2,6 +2,14 @@ declare interface MediaRecorderErrorEvent extends Event {
   name: string;
 }
 
+declare interface Window {
+  webkitAudioContext: typeof AudioContext;
+}
+
+declare interface HTMLInputEvent extends Event {
+  target: HTMLInputElement & EventTarget;
+}
+
 declare interface MediaRecorderDataAvailableEvent extends Event {
   data: any;
 }
@@ -35,7 +43,7 @@ declare class MediaRecorder extends EventTarget {
 
   constructor(stream: MediaStream);
 
-  start(timeslice: number);
+  start(timeslice: number | undefined = undefined);
 
   stop();
 
