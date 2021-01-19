@@ -11,6 +11,8 @@ const bufferSize = 4096;
 const stftWindowSize = 1024;
 const stftHopSize = stftWindowSize / 2;
 const fanOutFactor = 10;
+const constellationYGroupAmount = 10;
+const constellationXGroupSize = 64;
 
 const routes: Array<RouteConfig> = [
   {
@@ -24,6 +26,8 @@ const routes: Array<RouteConfig> = [
       stftWindowSize,
       stftHopSize,
       fanOutFactor,
+      constellationYGroupAmount,
+      constellationXGroupSize,
     }
   },
   {
@@ -40,6 +44,8 @@ const routes: Array<RouteConfig> = [
       stftWindowSize,
       stftHopSize,
       fanOutFactor,
+      constellationYGroupAmount,
+      constellationXGroupSize,
     }
   }
 ]

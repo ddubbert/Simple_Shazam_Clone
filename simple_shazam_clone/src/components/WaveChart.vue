@@ -22,7 +22,8 @@ export default class WaveChart extends Vue {
   fontSize = (this.cellSize >= 20) ? this.cellSize : this.cellSize * 2;
 
   drawWave(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
-    const verticalCenter = canvas.height / 2;
+    const horizontalBase = this.fontSize + this.cellSize;
+    const verticalBase = canvas.height / 2;
     const sampleStepSize = (canvas.width - this.fontSize * 2 - this.cellSize * 2) / this.timeDomain.length;
 
     context.save();
@@ -30,13 +31,13 @@ export default class WaveChart extends Vue {
     context.strokeStyle = '#43b420';
     context.lineWidth = 2;
 
-    context.moveTo(this.cellSize + this.fontSize, verticalCenter);
-    this.timeDomain.forEach((power, i) => {
+    context.moveTo(this.cellSize + this.fontSize, verticalBase);
+    for(let i = 0; i < this.timeDomain.length; i++) {
       context.lineTo(
-          this.fontSize + this.cellSize + sampleStepSize * i,
-          verticalCenter - (power / this.maxAmp * (verticalCenter - this.fontSize - this.cellSize)),
+          horizontalBase + sampleStepSize * i,
+          verticalBase - (this.timeDomain[i] / this.maxAmp * (verticalBase - this.fontSize - this.cellSize)),
       );
-    });
+    }
 
     context.stroke();
     context.restore();
@@ -47,6 +48,7 @@ export default class WaveChart extends Vue {
   drawAxis(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
     const verticalBase = canvas.height / 2;
     const horizontalBase = this.fontSize + this.cellSize;
+    const maxDrawHeight = canvas.height - 2 * this.fontSize - 2 * this.cellSize;
 
     context.save();
     context.beginPath();
@@ -76,11 +78,14 @@ export default class WaveChart extends Vue {
     context.moveTo(horizontalBase, canvas.height - this.fontSize);
     context.lineTo(horizontalBase, this.fontSize);
 
-    for (let y = 0; y < (canvas.height - 2 * this.fontSize) / 2; y += this.cellSize * 2) {
-      context.moveTo(this.fontSize + this.cellSize / 2, verticalBase + y);
-      context.lineTo(this.fontSize + this.cellSize * 1.5, verticalBase + y);
-      context.moveTo(this.fontSize + this.cellSize / 2, verticalBase - y);
-      context.lineTo(this.fontSize + this.cellSize * 1.5, verticalBase - y);
+    const yStepSize = maxDrawHeight / 2 / 5;
+
+    for (let y = yStepSize; y < maxDrawHeight / 2; y += yStepSize) {
+      context.moveTo(horizontalBase - this.cellSize / 2, verticalBase + y);
+      context.lineTo(horizontalBase + this.cellSize / 2, verticalBase + y);
+
+      context.moveTo(horizontalBase - this.cellSize / 2, verticalBase - y);
+      context.lineTo(horizontalBase + this.cellSize / 2, verticalBase - y);
     }
 
     context.stroke();
@@ -98,7 +103,9 @@ export default class WaveChart extends Vue {
     context.fill()
 
     context.font = `${this.fontSize}px Arial`;
-    context.fillText('Time (s)', canvas.width - this.fontSize * 4, verticalBase + this.fontSize * 1.1);
+    context.fillText(`${Math.round(this.maxAmp)}`, horizontalBase, this.fontSize * 0.9);
+
+    context.fillText('Time (s)', canvas.width / 2, canvas.height - this.fontSize * 0.25);
 
     context.translate(this.fontSize, (verticalBase - this.fontSize) / 2);
     context.rotate(-Math.PI/2);

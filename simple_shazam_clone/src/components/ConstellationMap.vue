@@ -13,9 +13,10 @@ export default class ConstellationMap extends Vue {
   @Prop() private cWidth!: number;
   @Prop() private cHeight!: number;
   @Prop() private cellSize!: number;
-  @Prop() private constellationPoints!: SpectrogramPoint[];
+  @Prop() private constellationPoints!: SpectrogramPoint[][];
   @Prop() private maxTime!: number;
   @Prop() private sampleRate!: number;
+  @Prop() private maxSpectrogramFreq!: number;
 
   drawTimeOut: number | undefined;
 
@@ -27,25 +28,21 @@ export default class ConstellationMap extends Vue {
       const horizontalBase = this.fontSize + this.cellSize;
       const maxDrawWidth = canvas.width - this.fontSize * 2 - this.cellSize * 2;
       const maxDrawHeight = verticalBase - this.fontSize - this.cellSize;
-      const xStepSize = maxDrawWidth / (this.constellationPoints.length + 1);
-      const maxFrequency = this.sampleRate / 2;
-      //const frequencyRange = this.sampleRate / 2; // this.spectrums[0].length;
 
       context.save();
       context.beginPath();
-      context.strokeStyle = '#43b420';
-      context.lineWidth = 2;
       context.fillStyle = '#000000';
-
       context.moveTo(this.cellSize + this.fontSize, verticalBase);
-      this.constellationPoints.forEach((specPoint, i) => {
-        context.fillRect(
-            horizontalBase + xStepSize * (i + 1),
-            verticalBase - (specPoint.point.frequency / maxFrequency) * maxDrawHeight,
-            2,
-            2,
-        );
-      });
+      for(let i = 0; i < this.constellationPoints.length; i++) {
+        for(let j = 0; j < this.constellationPoints[0].length; j++) {
+          context.fillRect(
+              horizontalBase + (this.constellationPoints[i][j].time / 1000 / this.maxTime) * maxDrawWidth - 1,
+              verticalBase - (this.constellationPoints[i][j].point.frequency / this.maxSpectrogramFreq) * maxDrawHeight - 1,
+              2,
+              2,
+          );
+        }
+      }
 
       context.stroke();
       context.restore();
@@ -58,6 +55,7 @@ export default class ConstellationMap extends Vue {
     const verticalBase = canvas.height - this.fontSize - this.cellSize * 2;
     const horizontalBase = this.fontSize + this.cellSize;
     const maxDrawWidth = canvas.width - this.fontSize * 2 - this.cellSize * 2;
+    const maxDrawHeight = verticalBase - this.fontSize - this.cellSize;
 
     context.save();
     context.beginPath();
@@ -89,7 +87,9 @@ export default class ConstellationMap extends Vue {
         }
       }
 
-      for (let y = this.fontSize + this.cellSize; y < verticalBase; y += this.cellSize * 2) {
+      const yStepSize = maxDrawHeight / 5;
+
+      for (let y = verticalBase; y > this.fontSize + this.cellSize; y -= yStepSize) {
         context.moveTo(horizontalBase - this.cellSize / 2, y);
         context.lineTo(horizontalBase + this.cellSize / 2, y);
       }
@@ -110,6 +110,13 @@ export default class ConstellationMap extends Vue {
     context.fill()
 
     context.font = `${this.fontSize}px Arial`;
+
+    context.fillText(
+        `${Math.round(this.maxSpectrogramFreq)}`,
+        horizontalBase,
+        this.fontSize * 0.9,
+    );
+
     context.fillText('Time (s)', canvas.width / 2, canvas.height - this.fontSize * 0.25);
 
     context.translate(this.fontSize, (verticalBase - this.fontSize) / 2);
@@ -195,15 +202,6 @@ export default class ConstellationMap extends Vue {
       this.onResize();
     }, 3000);
   }
-
-  /*@Watch("maxMag")
-  updateMaxMag() {
-    clearTimeout(this.drawTimeOut)
-    this.drawTimeOut = setTimeout(() => {
-      console.log("Change");
-      this.onResize();
-    }, 3000);
-  }*/
 }
 </script>
 

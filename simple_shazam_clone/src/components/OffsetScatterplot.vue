@@ -14,6 +14,7 @@ export default class OffsetScatterplot extends Vue {
   @Prop() private cHeight!: number;
   @Prop() private cellSize!: number;
   @Prop() private points!: MatchingPoint[];
+  @Prop() private maxTime!: number;
 
   drawTimeOut: number | undefined;
 
@@ -21,7 +22,6 @@ export default class OffsetScatterplot extends Vue {
 
   drawPoints(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
     let maxX = 0;
-    let maxY = 0;
 
     if(this.points.length > 0) {
       const verticalBase = canvas.height - this.fontSize - this.cellSize * 2;
@@ -32,20 +32,17 @@ export default class OffsetScatterplot extends Vue {
       for(let i = 0; i < this.points.length; i++) {
         const currentPoint = this.points[i];
         if (currentPoint.songOffset > maxX) maxX = currentPoint.songOffset;
-        if (currentPoint.sampleOffset > maxY) maxY = currentPoint.sampleOffset;
       }
 
       context.save();
       context.beginPath();
-      context.strokeStyle = '#43b420';
-      context.lineWidth = 2;
       context.fillStyle = '#000000';
 
       context.moveTo(this.cellSize + this.fontSize, verticalBase);
       this.points.forEach((point) => {
         context.fillRect(
-            horizontalBase + (point.songOffset / maxX * maxDrawWidth),
-            verticalBase - (point.sampleOffset / maxY * maxDrawHeight),
+            horizontalBase + (point.songOffset / maxX * maxDrawWidth) - 1,
+            verticalBase - (point.sampleOffset / (this.maxTime * 1000) * maxDrawHeight) - 1,
             2,
             2,
         );
@@ -55,7 +52,7 @@ export default class OffsetScatterplot extends Vue {
       context.restore();
     }
 
-    this.drawAxis(canvas, context, maxX)
+    this.drawAxis(canvas, context, maxX);
   }
 
   drawAxis(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D, maxX: number) {
@@ -90,7 +87,7 @@ export default class OffsetScatterplot extends Vue {
 
         if(x > 0) {
           context.fillText(
-              `${x * xLabelSteps}`,
+              `${Math.round(x * xLabelSteps) / 1000}`,
               x * xStepSize + horizontalBase,
               verticalBase + this.fontSize / 1.5 + this.cellSize / 2,
           )
@@ -118,6 +115,8 @@ export default class OffsetScatterplot extends Vue {
     context.fill()
 
     context.font = `${this.fontSize}px Arial`;
+    context.fillText(`${Math.round(this.maxTime)}`, horizontalBase, this.fontSize * 0.9);
+
     context.fillText('Offset Song', canvas.width / 2, canvas.height - this.fontSize * 0.25);
 
     context.translate(this.fontSize, (verticalBase - this.fontSize) / 2);

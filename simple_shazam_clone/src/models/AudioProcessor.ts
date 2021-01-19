@@ -1,12 +1,13 @@
-import {HashPair, HashToken, SpectrogramData, SpectrogramPoint, SpectrumData} from '@/@types/Signal';
+import {FreqMagPair, HashPair, HashToken, SpectrogramData, SpectrogramPoint, SpectrumData} from '@/@types/Signal';
 const fft = require('fft-js').fft,
   fftUtil = require('fft-js').util;
 
 export interface AudioProcessor {
   getTimeDomainData(decoded: AudioBuffer): number[];
   calculateSpectrum(amplitudes: number[]): SpectrumData;
-  calculateSpectrogram(amplitudes: number[], recordingSeconds: number): SpectrogramData;
-  calculateHashes(constellationPoints: SpectrogramPoint[]): HashToken[];
+  calculateSpectrogram(amplitudes: number[]): SpectrogramData;
+  getConstellationPoints(spectrogram: SpectrogramData): SpectrogramPoint[][];
+  calculateHashes(constellationPoints: SpectrogramPoint[][]): HashToken[];
 }
 
 export function createAudioProcessor(
@@ -14,26 +15,25 @@ export function createAudioProcessor(
   stftWindowSize: number,
   stftHopSize: number,
   fanOutFactor: number,
+  constellationYGroupAmount: number,
+  constellationXGroupSize: number,
   ): AudioProcessor {
-  /*function getTimeDomainData(amplitudes: number[], recordingTime: number): number[] {
-    const amountSamplesForRecordingTime = recordingTime * sampleRate;
-    return amplitudes.slice(0, amountSamplesForRecordingTime);
-  }*/
-
   function getTimeDomainData(decoded: AudioBuffer): number[] {
     const channels = [];
 
-    console.log(decoded.numberOfChannels);
     for(let i = 0; i < decoded.numberOfChannels; i++) {
       channels.push(decoded.getChannelData(i));
     }
 
-    return channels.reduce((acc, channel, i) => {
-      if (i === 0) return Array.prototype.slice.call(channel);
-      else {
-        return acc.map((it, j) => it + channel[j]);
+    let timeDomain: number[] = [];
+    for(let i = 0; i < channels.length; i++) {
+      if (i === 0) timeDomain = Array.prototype.slice.call(channels[i]);
+      for(let j = 0; j < channels.length; j++) {
+        timeDomain[j] = timeDomain[j] + channels[i][j];
       }
-    }, [] as number[]);
+    }
+
+    return timeDomain;
   }
 
   function getMaxAmountForFFT(length: number): number {
@@ -65,42 +65,84 @@ export function createAudioProcessor(
     const frequencies = fftUtil.fftFreq(phasors, sampleRate),
       magnitudes = fftUtil.fftMag(phasors);
 
-    const maxPair = { frequency: 0, magnitude: 0 };
-    const freqMagPairs = frequencies.map(function (f: number, ix: number) {
-      if (magnitudes[ix] > maxPair.magnitude) {
-        maxPair.magnitude = magnitudes[ix];
-        maxPair.frequency = f;
-      }
-      return { frequency: f, magnitude: Math.abs(magnitudes[ix]) };
-    });
+    let maxPair = { frequency: 0, magnitude: 0 };
+    let maxImportantIndex = 0;
 
-    return { maxPair, freqMagPairs }
+    const freqMagPairs: FreqMagPair[] = [];
+    for(let i = 0; i < frequencies.length; i++) {
+      const pair = { frequency: frequencies[i], magnitude: Math.max(magnitudes[i], 0) };
+      if (magnitudes[i] > maxPair.magnitude) maxPair = pair;
+      if (magnitudes[i] > 5) maxImportantIndex = i;
+      freqMagPairs.push(pair);
+    }
+
+    return { maxPair, freqMagPairs, maxImportantIndex };
   }
 
-  function calculateSpectrogram(amplitudes: number[], recordingSeconds: number): SpectrogramData {
+  function calculateSpectrogram(amplitudes: number[]): SpectrogramData {
     const amountSamples = amplitudes.length;
     const amountSpectrums = Math.floor(amountSamples / stftHopSize) - 1;
-    const stepTime = stftHopSize * 1000 / sampleRate;
-
-    const windowSpectrums = [];
+    const longSpectrums: FreqMagPair[][] = [];
     let maxMag = 0;
-    const maxPairs: SpectrogramPoint[] = [];
+    let maxImportantIndex = 0;
+
     for(let i = 0; i < amountSpectrums; i++) {
       const start = i * stftHopSize;
       const end = start + Math.min(amountSamples - start, stftWindowSize);
       const windowSpectrum = calculateSpectrum(amplitudes.slice(start, end));
       if (maxMag < windowSpectrum.maxPair.magnitude) maxMag = windowSpectrum.maxPair.magnitude;
+      if (windowSpectrum.maxImportantIndex > maxImportantIndex) maxImportantIndex = windowSpectrum.maxImportantIndex;
 
-      const specPoint = {
-        point: windowSpectrum.maxPair,
-        time: stepTime * i,
-      };
-
-      maxPairs.push(specPoint);
-      windowSpectrums.push(windowSpectrum.freqMagPairs);
+      longSpectrums.push(windowSpectrum.freqMagPairs);
     }
 
-    return { maxMag, maxPairs, windowSpectrums };
+    const windowSpectrums = [];
+    for(let i = 0; i < longSpectrums.length; i++) {
+      windowSpectrums.push(longSpectrums[i].slice(0, maxImportantIndex + 1));
+    }
+
+    return { maxMag, windowSpectrums, maxFreq: windowSpectrums[0][maxImportantIndex].frequency };
+  }
+
+  function getMaxInGroup(points: SpectrogramPoint[]): SpectrogramPoint {
+    let max = points[0] || { point: { frequency: 0, magnitude: 0 }, time: 0 };
+
+    for (let i = 0; i < points.length; i++) {
+      if(points[i].point.magnitude > max.point.magnitude) max = points[i];
+    }
+
+    return max;
+  }
+
+  function getConstellationPoints(spectrogram: SpectrogramData): SpectrogramPoint[][]  {
+    const stepTime = stftHopSize * 1000 / sampleRate;
+    const yGroupSize = Math.round(spectrogram.windowSpectrums[0].length / constellationYGroupAmount);
+    const xGroupAmount = Math.round(spectrogram.windowSpectrums.length / constellationXGroupSize);
+    const constellationPoints: SpectrogramPoint[][] = [];
+
+    for(let i = 0; i < xGroupAmount; i++) {
+      constellationPoints.push([]);
+      for(let j = 0; j < constellationYGroupAmount; j++) {
+        const xMin = i * constellationXGroupSize;
+        const xMax = Math.min((i + 1) * constellationXGroupSize, spectrogram.windowSpectrums.length);
+        const yMin = j * yGroupSize;
+        const yMax = Math.min((j + 1) * yGroupSize, spectrogram.windowSpectrums[0].length);
+
+        const pointsInGroup: SpectrogramPoint[] = [];
+        for(let x = xMin; x < xMax; x++) {
+          for(let y = yMin; y < yMax; y++) {
+            pointsInGroup.push({
+              point: spectrogram.windowSpectrums[x][y],
+              time: stepTime * x,
+            });
+          }
+        }
+
+        constellationPoints[i].push(getMaxInGroup(pointsInGroup));
+      }
+    }
+
+    return constellationPoints;
   }
 
   function createHashCode(s: string): number {
@@ -108,7 +150,7 @@ export function createAudioProcessor(
     for (i = 0; i < s.length; i++) {
       chr   = s.charCodeAt(i);
       hash  = ((hash << 5) - hash) + chr;
-      hash |= 0; // Convert to 32bit integer
+      hash |= 0;
     }
     return hash;
   }
@@ -122,33 +164,37 @@ export function createAudioProcessor(
     }
   }
 
-  function calculateHashes(constellationPoints: SpectrogramPoint[]): HashToken[] {
-    const amountPoints = constellationPoints.length - 1;
+  function calculateHashes(constellationPoints: SpectrogramPoint[][]): HashToken[] {
+    const amountPointArrays = constellationPoints.length;
+    const hashes: HashToken[] = [];
 
-    return constellationPoints.reduce((acc, specPoint, pointIndex) => {
-      const newAcc = acc.slice(0);
-      const cellsAfterCurrent = amountPoints - pointIndex;
-      const amountConnections = (cellsAfterCurrent < fanOutFactor)
-        ? cellsAfterCurrent
+    for(let i = 0; i < amountPointArrays; i++) {
+      const pointArray = constellationPoints[i];
+      const arraysAfterCurrent = (amountPointArrays - i) - 1;
+      const amountConnections = (arraysAfterCurrent < fanOutFactor)
+        ? arraysAfterCurrent
         : fanOutFactor;
 
-      for (let i = 1; i <= amountConnections; i += 1) {
-        const hashPair = {
-          first: specPoint,
-          second: constellationPoints[pointIndex + i],
+      for(let j = 0; j < pointArray.length; j++) {
+        for(let k = 1; k <= amountConnections; k++) {
+          const hashPair = {
+            first: pointArray[j],
+            second: constellationPoints[i + k][j],
+          }
+
+          hashes.push(createHashToken(hashPair));
         }
-
-        newAcc.push(createHashToken(hashPair));
       }
+    }
 
-      return newAcc;
-    }, [] as HashToken[]);
+    return hashes;
   }
 
   return {
     getTimeDomainData,
     calculateSpectrum,
     calculateSpectrogram,
+    getConstellationPoints,
     calculateHashes,
   } as AudioProcessor;
 }

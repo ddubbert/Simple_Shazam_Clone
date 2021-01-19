@@ -6,6 +6,7 @@ export interface FreqMagPair {
 export interface SpectrumData {
   maxPair: FreqMagPair;
   freqMagPairs: FreqMagPair[];
+  maxImportantIndex: number;
 }
 
 export interface SpectrogramPoint {
@@ -14,9 +15,9 @@ export interface SpectrogramPoint {
 }
 
 export interface SpectrogramData {
-  maxPairs: SpectrogramPoint[];
   maxMag: number;
   windowSpectrums: FreqMagPair[][];
+  maxFreq: number;
 }
 
 export interface HashPair {

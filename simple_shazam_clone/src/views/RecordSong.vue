@@ -1,23 +1,12 @@
 <template>
   <div class="home">
-<!--    <div>
-      <button
-          id="recordButton"
-          @click="recordFromMicrophone"
-          :disabled="isRecording"
-      >
-        {{(isRecording) ? recordingTextBase + recordingCount : 'Select a file'}}
-      </button>
-
-      <a v-if="isRecording && countDown > 0" id="countdown">{{countDown}}</a>
-    </div>-->
 
     <div>
       <h1 class="stepText"> Convert Song to hashes: </h1>
     </div>
 
     <div>
-      <button class="recordButton" @click="$refs.songInput.click()">Choose Song</button>
+      <button class="recordButton" @click="$refs.songInput.click()">Choose Songs</button>
     </div>
 
     <div>
@@ -26,6 +15,7 @@
           ref="songInput"
           type="file"
           name="files[]"
+          multiple
           @change="selectFile"
           :disabled="isRecording"
       />
@@ -58,13 +48,25 @@
     <div>
       <a id="stepText"> {{currentStep}} </a>
     </div>
+
+    <div class="spacer"></div>
+
+    <div>
+      <h1> Songs in Database: </h1>
+    </div>
+
+    <div v-for="song in songs" :key="song.name">
+      <h3>
+        {{`${song.name} (${Math.round(song.duration)} Sekunden)`}}
+      </h3>
+    </div>
   </div>
 </template>
 
 <script lang="ts">
 import {Component, Prop, Vue} from 'vue-property-decorator';
 import {AudioProcessor, createAudioProcessor} from '@/models/AudioProcessor';
-import {SongDatabase} from '@/models/SongDatabase'
+import {Song, SongDatabase} from '@/models/SongDatabase'
 
 @Component({
   components: {
@@ -77,62 +79,67 @@ export default class RecordSong extends Vue {
   @Prop() private stftWindowSize!: number;
   @Prop() private stftHopSize!: number;
   @Prop() private fanOutFactor!: number;
+  @Prop() private constellationYGroupAmount!: number;
+  @Prop() private constellationXGroupSize!: number;
 
   isRecording = false;
 
-  timeout: number | null = null;
-
-  interval: number | null = null;
-
-  songName = '';
-
   currentStep = 'Select Song or Song Hashes File...';
+
+  songs: Song[] = this.database.getSongs();
 
   audioProcessor: AudioProcessor = createAudioProcessor(
       this.sampleRate,
       this.stftWindowSize,
       this.stftHopSize,
       this.fanOutFactor,
+      this.constellationYGroupAmount,
+      this.constellationXGroupSize,
   );
 
   selectFile(e?: HTMLInputEvent) {
     if(e && e.target.files) {
       this.isRecording = true;
-      const file = e.target.files[0];
-      this.songName = file.name;
-      this.recordFromFile(file);
+      for(let i = 0; i < e.target.files.length; i++) {
+        const file = e.target.files[i];
+        this.recordFromFile(file, file.name);
+      }
     }
   }
 
-  decodeFile(buffer: ArrayBuffer) {
-    this.currentStep = 'Decoding Song...';
+  decodeFile(buffer: ArrayBuffer, songName: string) {
+    this.currentStep = `Decoding Song: ${songName}`;
     const audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: this.sampleRate });
 
     audioContext.decodeAudioData(buffer, (decoded: AudioBuffer) => {
       console.log('Calculating Time Domain...');
-      this.currentStep = 'Calculating Time Domain...';
       const timeDomain = this.audioProcessor.getTimeDomainData(decoded);
 
       console.log('Calculating Spectrogram...');
-      this.currentStep = 'Calculating Spectrogram...';
-      const spectrogram = this.audioProcessor.calculateSpectrogram(timeDomain, decoded.duration);
+      const spectrogram = this.audioProcessor.calculateSpectrogram(timeDomain);
+
+      console.log('Calculating Spectrogram...');
+      const constellation = this.audioProcessor.getConstellationPoints(spectrogram);
 
       console.log('Calculating Hashes...');
-      this.currentStep = 'Calculationg Hashes...';
-      const hashTokens = this.audioProcessor.calculateHashes(spectrogram.maxPairs);
+      const hashTokens = this.audioProcessor.calculateHashes(constellation);
 
       console.log('Saving Hashes...');
-      this.currentStep = 'Saving Hashes...';
-      this.database.addSong(this.songName, decoded.duration, hashTokens);
+      this.database.addSong(songName, decoded.duration, hashTokens);
 
       console.log('Finished...');
       this.currentStep = 'Select Song or Song Hashes File...';
 
       this.isRecording = false;
+
+      this.songs.splice(0);
+      this.database.getSongs().forEach((s) => {
+        this.songs.push(s);
+      });
     });
   }
 
-  recordFromFile(file: File) {
+  recordFromFile(file: File, songName: string) {
     this.currentStep = 'Recording Song...';
     const fReader = new FileReader();
     const audio = this.$refs.audio as HTMLAudioElement;
@@ -140,7 +147,7 @@ export default class RecordSong extends Vue {
     fReader.onload = (e?: ProgressEvent<FileReader>) => {
       if(e && fReader.result) {
         audio.src = fReader.result as string;
-        this.decodeFile(fReader.result as ArrayBuffer);
+        this.decodeFile(fReader.result as ArrayBuffer, songName);
       }
     };
 
@@ -151,7 +158,14 @@ export default class RecordSong extends Vue {
     const fReader = new FileReader();
     fReader.readAsText(file, 'UTF-8');
     fReader.onload = (e?: ProgressEvent<FileReader>) => {
-      if(e && fReader.result) this.database.uploadHashes(JSON.parse(fReader.result as string));
+      if(e && fReader.result) {
+        this.database.uploadHashes(JSON.parse(fReader.result as string));
+
+        this.songs.splice(0);
+        this.database.getSongs().forEach((s) => {
+          this.songs.push(s);
+        });
+      }
     }
   }
 
@@ -162,9 +176,9 @@ export default class RecordSong extends Vue {
 
       for(let i = 0; i < e.target.files.length; i++) {
         this.readHeashFile(e.target.files[i]);
+        this.currentStep = `Hashes of ${i + 1} songs uploaded...`;
       }
 
-      this.currentStep = `Hashes of ${e.target.files.length} songs uploaded...`;
       this.isRecording = false;
     }
   }

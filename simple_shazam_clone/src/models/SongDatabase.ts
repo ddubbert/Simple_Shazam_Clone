@@ -6,7 +6,7 @@ interface SongHashToken {
   hash: string;
 }
 
-interface Song {
+export interface Song {
   duration: number;
   name: string;
 }
@@ -39,7 +39,7 @@ interface NumberHashMap {
 
 export interface Histogram {
   maxCount: number;
-  maxValue: any;
+  maxValue: number;
   valueAmounts: NumberHashMap;
 }
 
@@ -50,6 +50,7 @@ export interface MatchingSong {
 }
 
 export interface SongDatabase {
+  getSongs(): Song[];
   uploadHashes(data: SongFileData): void;
   addSong(name: string, duration: number, hashes: HashToken[]): void;
   getSongFor(sampleTokens: HashToken[]): MatchingSong;
@@ -58,6 +59,10 @@ export interface SongDatabase {
 export function createSongDatabase(): SongDatabase {
   const songs: SongMap = {};
   const tokenDatabase: SongHashMap = {};
+
+  function getSongs(): Song[] {
+    return Object.keys(songs).map((name) => songs[name]);
+  }
 
   function addHash(token: SongHashToken) {
     if (tokenDatabase[token.hash]) tokenDatabase[token.hash].push(token);
@@ -91,6 +96,7 @@ export function createSongDatabase(): SongDatabase {
       song,
       hashes: songHashes,
     } as SongFileData)
+
     const blob = new Blob([data], {type: 'text/plain'})
     const e = document.createEvent('MouseEvents'),
       a = document.createElement('a');
@@ -103,7 +109,7 @@ export function createSongDatabase(): SongDatabase {
 
   function getHistogram(arr: number[]): Histogram {
     const valueAmounts = {} as NumberHashMap;
-    let maxCount = 0, maxValue, m;
+    let maxCount = 0, maxValue = 0, m;
     for (let i=0, iLen=arr.length; i<iLen; i++) {
       m = arr[i];
 
@@ -140,6 +146,8 @@ export function createSongDatabase(): SongDatabase {
         const offsets = points
           .map(({songOffset, sampleOffset}) => Math.abs(songOffset - sampleOffset));
         const histogram = getHistogram(offsets);
+        console.log(songName);
+        console.log(histogram);
 
         if(!bestMatch || histogram.maxCount > bestMatch.histogram.maxCount) {
           bestMatch = {
@@ -157,6 +165,7 @@ export function createSongDatabase(): SongDatabase {
 
   function getSongFor(sampleTokens: HashToken[]): MatchingSong {
     const matchingSongs: PointMap = {};
+    if(Object.keys(songs).length === 0) throw Error('No Song Found.');
 
     for(let i = 0; i < sampleTokens.length; i++) {
       const token = sampleTokens[i];
@@ -184,6 +193,7 @@ export function createSongDatabase(): SongDatabase {
   }
 
   return {
+    getSongs,
     uploadHashes,
     addSong,
     getSongFor,

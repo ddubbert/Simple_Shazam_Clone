@@ -19,29 +19,45 @@ export default class OffsetHistogram extends Vue {
 
   fontSize = (this.cellSize >= 20) ? this.cellSize : this.cellSize * 2;
 
-  drawPoints(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
+  drawBars(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
+    let sorted: {offset: number; amount: number}[] = [];
+
     if(this.histogram && Object.keys(this.histogram.valueAmounts).length > 0) {
+      const amountDifferentOffsets = Object.keys(this.histogram.valueAmounts).length;
       const verticalBase = canvas.height - this.fontSize - this.cellSize * 2;
       const horizontalBase = this.fontSize + this.cellSize;
       const maxDrawWidth = canvas.width - this.fontSize * 2 - this.cellSize * 2;
       const maxDrawHeight = verticalBase - this.fontSize - this.cellSize;
-      const amountDifferentOffsets = Object.keys(this.histogram.valueAmounts).length;
       const xStepSize = maxDrawWidth / amountDifferentOffsets;
+      const offsets: {offset: number; amount: number}[] = [];
+
+      for(let i = 0; i < amountDifferentOffsets; i++) {
+        const offset = Object.keys(this.histogram.valueAmounts)[i];
+        const pair = {
+          offset: +offset,
+          amount: this.histogram.valueAmounts[offset],
+        }
+        offsets.push(pair);
+      }
+      sorted = offsets.sort((a, b) => a.offset - b.offset);
 
       context.save();
       context.beginPath();
-      context.strokeStyle = '#43b420';
-      context.lineWidth = 2;
-      context.fillStyle = '#000000';
+      context.fillStyle = '#43b420';
 
       context.moveTo(this.cellSize + this.fontSize, verticalBase);
       for (let x = 0; x < amountDifferentOffsets; x += 1) {
-        const currentOffset = Object.keys(this.histogram.valueAmounts)[x];
-        const barHeight = (+currentOffset / this.histogram.maxCount) * maxDrawHeight;
+        // const pair = sorted[x];
+        const offset = Object.keys(this.histogram.valueAmounts)[x];
+        const pair = {
+          offset: +offset,
+          amount: this.histogram.valueAmounts[offset],
+        }
+        const barHeight = (pair.amount / this.histogram.maxCount) * maxDrawHeight;
         context.fillRect(
             horizontalBase + (x * xStepSize),
             verticalBase - barHeight,
-            xStepSize,
+            2,
             barHeight,
         );
       }
@@ -50,10 +66,10 @@ export default class OffsetHistogram extends Vue {
       context.restore();
     }
 
-    this.drawAxis(canvas, context)
+    this.drawAxis(canvas, context, sorted)
   }
 
-  drawAxis(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
+  drawAxis(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D, sorted: {offset: number; amount: number}[]) {
     const verticalBase = canvas.height - this.fontSize - this.cellSize * 2;
     const horizontalBase = this.fontSize + this.cellSize;
     const maxDrawWidth = canvas.width - this.fontSize * 2 - this.cellSize * 2;
@@ -73,23 +89,23 @@ export default class OffsetHistogram extends Vue {
     context.moveTo(horizontalBase, canvas.height - this.fontSize);
     context.lineTo(horizontalBase, this.fontSize);
 
-    if(this.histogram && Object.keys(this.histogram.valueAmounts).length > 0) {
-      const amountDifferentOffsets = Object.keys(this.histogram.valueAmounts).length;
-      const xStepSize = maxDrawWidth / amountDifferentOffsets;
+    if(sorted.length > 0) {
+      const xStepSize = maxDrawWidth / 10;
       const yStepSize = maxDrawHeight / 5;
 
-      for (let x = 0; x < amountDifferentOffsets; x += 1) {
-        // const currentOffset = Object.keys(this.histogram.valueAmounts)[x];
+      const xLabelSteps = Math.round(sorted.length / 10);
+
+      for (let x = 0; x < 10; x += 1) {
         context.moveTo(x * xStepSize + horizontalBase, verticalBase + this.cellSize / 2);
         context.lineTo(x * xStepSize + horizontalBase, verticalBase - this.cellSize / 2);
 
-        /*if(x > 0) {
+        if (x > 0) {
           context.fillText(
-              `${currentOffset}`,
-              horizontalBase + (x * xStepSize) - (xStepSize / 2),
+              `${Math.round(sorted[x * xLabelSteps - 1].offset) / 1000}`,
+              x * xStepSize + horizontalBase,
               verticalBase + this.fontSize / 1.5 + this.cellSize / 2,
           )
-        }*/
+        }
       }
 
       for (let y = verticalBase; y > this.fontSize + this.cellSize; y -= yStepSize) {
@@ -113,6 +129,8 @@ export default class OffsetHistogram extends Vue {
     context.fill()
 
     context.font = `${this.fontSize}px Arial`;
+    context.fillText(`${this.histogram.maxCount}`, horizontalBase, this.fontSize * 0.9);
+
     context.fillText('Offset Song', canvas.width / 2, canvas.height - this.fontSize * 0.25);
 
     context.translate(this.fontSize, (verticalBase - this.fontSize) / 2);
@@ -153,7 +171,7 @@ export default class OffsetHistogram extends Vue {
       context.lineTo(0, 0);
       context.stroke();
 
-      this.drawPoints(canvas, context);
+      this.drawBars(canvas, context);
     }
   }
 

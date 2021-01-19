@@ -79,9 +79,9 @@
           :c-width="1200"
           :c-height="600"
           :cell-size="20"
-          :spectrums="windowSpectrums"
-          :maxMag="spectrogramMaxMag"
+          :spectrogram="spectrogram"
           :max-time="recordingTime"
+          :sample-rate="sampleRate"
       ></Spectrogram>
     </div>
 
@@ -98,6 +98,7 @@
           :constellation-points="constellationPoints"
           :max-time="recordingTime"
           :sample-rate="sampleRate"
+          :max-spectrogram-freq="maxSpectrogramFreq"
       ></ConstellationMap>
     </div>
 
@@ -112,6 +113,7 @@
           :c-height="600"
           :cell-size="20"
           :points="scatterplotPoints"
+          :max-time="recordingTime"
       ></OffsetScatterplot>
     </div>
 
@@ -140,7 +142,7 @@ import ConstellationMap from '@/components/ConstellationMap.vue';
 import OffsetScatterplot from '@/components/OffsetScatterplot.vue';
 import OffsetHistogram from '@/components/OffsetHistogram.vue';
 import {
-  FreqMagPair,
+  FreqMagPair, SpectrogramData,
   SpectrogramPoint,
 } from '../@types/Signal';
 import { createAudioProcessor, AudioProcessor} from '@/models/AudioProcessor';
@@ -163,12 +165,10 @@ export default class RecordSample extends Vue {
   @Prop() private stftWindowSize!: number;
   @Prop() private stftHopSize!: number;
   @Prop() private fanOutFactor!: number;
+  @Prop() private constellationYGroupAmount!: number;
+  @Prop() private constellationXGroupSize!: number;
 
   isRecording = false;
-
-  timeout: number | null = null;
-
-  interval: number | null = null;
 
   timeDomain: number[] = [];
 
@@ -180,11 +180,13 @@ export default class RecordSample extends Vue {
 
   maxAmp = 0;
 
-  windowSpectrums: FreqMagPair[][] = [];
+  spectrogram: SpectrogramData = {
+    maxMag: 0,
+    windowSpectrums: [],
+    maxFreq: 0,
+  };
 
-  spectrogramMaxMag = 0;
-
-  constellationPoints: SpectrogramPoint[] = [];
+  constellationPoints: SpectrogramPoint[][] = [];
 
   scatterplotPoints: MatchingPoint[] = []
 
@@ -193,6 +195,8 @@ export default class RecordSample extends Vue {
     maxValue: 0,
     valueAmounts: {},
   }
+
+  maxSpectrogramFreq = 0;
 
   countDown = 3;
 
@@ -209,6 +213,8 @@ export default class RecordSample extends Vue {
       this.stftWindowSize,
       this.stftHopSize,
       this.fanOutFactor,
+      this.constellationYGroupAmount,
+      this.constellationXGroupSize,
   );
 
   generateSinWave(amountSamples: number, samplingRate: number, amplitude: number, frequency: number): number[] {
@@ -225,27 +231,22 @@ export default class RecordSample extends Vue {
 
   processAudioData(decoded: AudioBuffer) {
     console.log('Calculating Time Domain...');
-    this.currentStep = 'Calculating Time Domain...';
     const timeDomain = this.audioProcessor.getTimeDomainData(decoded);
 
-    console.log('Calculating Time Domain...');
-    this.currentStep = 'Calculating Spectrum...';
-    const freqDomain = this.audioProcessor.calculateSpectrum(timeDomain);
-
     console.log('Calculating Spectrogram...');
-    this.currentStep = 'Calculating Spectrogram...';
-    const spectrogram = this.audioProcessor.calculateSpectrogram(timeDomain, decoded.duration);
+    const spectrogram = this.audioProcessor.calculateSpectrogram(timeDomain);
+
+    console.log('Calculating Constellation Points...');
+    const constellation = this.audioProcessor.getConstellationPoints(spectrogram);
 
     console.log('Calculating Hashes...');
-    this.currentStep = 'Calculationg Hashes...';
-    const hashTokens = this.audioProcessor.calculateHashes(spectrogram.maxPairs);
+    const hashTokens = this.audioProcessor.calculateHashes(constellation);
 
     console.log('Comparing Hashes And Finding Song...');
-    this.currentStep = 'Comparing Hashes And Finding Song...';
     let song: MatchingSong;
     try {
       song = this.database.getSongFor(hashTokens);
-      this.currentSong = `<b>${song.song.name}</b> (Duration: ${Math.round(song.song.duration)}  seconds).`;
+      this.currentSong = `${song.song.name} (Duration: ${Math.round(song.song.duration)}  seconds).`;
     } catch(e) {
       this.currentStep = 'No Matching Song Found.';
     }
@@ -253,6 +254,9 @@ export default class RecordSample extends Vue {
     this.currentStep = 'Drawing...';
 
     setTimeout(() => {
+      console.log('Calculating Frequency Domain...');
+      const freqDomain = this.audioProcessor.calculateSpectrum(timeDomain);
+
       console.log('Drawing time domain...');
       this.timeDomain = timeDomain;
       this.maxAmp = timeDomain.reduce((max, el) => (el > max) ? el : max);
@@ -262,11 +266,11 @@ export default class RecordSample extends Vue {
       this.spectrumPairs = freqDomain.freqMagPairs;
 
       console.log('Drawing spectrogram...');
-      this.windowSpectrums = spectrogram.windowSpectrums;
-      this.spectrogramMaxMag = spectrogram.maxMag;
+      this.spectrogram = spectrogram;
 
       console.log('Drawing constellation map...');
-      this.constellationPoints = spectrogram.maxPairs;
+      this.maxSpectrogramFreq = spectrogram.maxFreq;
+      this.constellationPoints = constellation;
 
       if(song) {
         console.log('Drawing scatterplot...');
@@ -283,6 +287,7 @@ export default class RecordSample extends Vue {
 
   recordFromMicrophone() {
     if (!this.isRecording) {
+      this.currentStep = 'Recording...';
       this.currentSong = '...';
       this.isRecording = true;
       this.recordingCount = this.recordingTime;
@@ -317,11 +322,13 @@ export default class RecordSample extends Vue {
           });
 
           mediaRecorder.addEventListener("stop", () => {
+            this.currentStep = 'Decoding Sample...';
             const audioBlob = new Blob(audioChunks);
             const fileReader = new FileReader();
 
             fileReader.onloadend = () => {
               audioContext.decodeAudioData(fileReader.result as ArrayBuffer, (decoded: AudioBuffer) => {
+                this.currentStep = 'Decoding Sample...';
                 this.processAudioData(decoded);
               });
             }
@@ -356,7 +363,6 @@ export default class RecordSample extends Vue {
 
     const wave = sineWave.map((el, i) => el + cosineWave[i]);
     const max = wave.reduce((acc, el) => (acc > Math.abs(el)) ? acc : Math.abs(el));
-    console.log(max);
     this.maxAmp = max;
     this.timeDomain = wave;
   }

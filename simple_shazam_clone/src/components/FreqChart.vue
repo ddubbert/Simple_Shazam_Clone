@@ -21,23 +21,26 @@ export default class FreqChart extends Vue {
 
   fontSize = (this.cellSize >= 20) ? this.cellSize : this.cellSize * 2;
 
-  drawWave(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
+  drawBars(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
     const verticalBase = canvas.height - this.fontSize - this.cellSize * 2;
     const horizontalBase = this.fontSize + this.cellSize;
     const freqStepSize = (canvas.width - this.fontSize * 2 - this.cellSize * 2) / this.spectrumPairs.length;
+    const maxDrawHeight = verticalBase - this.fontSize - this.cellSize;
 
     context.save();
     context.beginPath();
-    context.strokeStyle = '#43b420';
-    context.lineWidth = 2;
+    context.fillStyle = '#43b420';
 
     context.moveTo(this.cellSize + this.fontSize, verticalBase);
-    this.spectrumPairs.forEach(({ magnitude }, i) => {
-      context.lineTo(
+    for(let i = 0; i < this.spectrumPairs.length; i++) {
+      const barHeight = (this.spectrumPairs[i].magnitude / this.maxMag) * maxDrawHeight;
+      context.fillRect(
           horizontalBase + freqStepSize * i,
-          verticalBase - (magnitude / this.maxMag * (verticalBase - this.fontSize - this.cellSize)),
+          verticalBase - barHeight,
+          2,
+          barHeight,
       );
-    });
+    }
 
     context.stroke();
     context.restore();
@@ -61,6 +64,7 @@ export default class FreqChart extends Vue {
 
     const spectrumLength = this.spectrumPairs.length;
     const maxDrawWidth = canvas.width - this.fontSize * 2 - this.cellSize * 2;
+    const maxDrawHeight = verticalBase - this.fontSize - this.cellSize;
 
     if(spectrumLength > 0) {
       const binSize = this.sampleRate / 2 / spectrumLength;
@@ -83,7 +87,9 @@ export default class FreqChart extends Vue {
     context.moveTo(horizontalBase, canvas.height - this.fontSize);
     context.lineTo(horizontalBase, this.fontSize);
 
-    for (let y = verticalBase; y > this.fontSize + this.cellSize; y -= this.cellSize * 2) {
+    const yStepSize = maxDrawHeight / 5;
+
+    for (let y = verticalBase; y > this.fontSize + this.cellSize; y -= yStepSize) {
       context.moveTo(horizontalBase - this.cellSize / 2, y);
       context.lineTo(horizontalBase + this.cellSize / 2, y);
     }
@@ -103,6 +109,8 @@ export default class FreqChart extends Vue {
     context.fill()
 
     context.font = `${this.fontSize}px Arial`;
+    context.fillText(`${Math.round(this.maxMag)}`, horizontalBase, this.fontSize * 0.9);
+
     context.fillText('Frequency (Hz)', canvas.width / 2, canvas.height - this.fontSize * 0.25);
 
     context.translate(this.fontSize, (verticalBase - this.fontSize) / 2);
@@ -143,7 +151,7 @@ export default class FreqChart extends Vue {
       context.lineTo(0, 0);
       context.stroke();
 
-      this.drawWave(canvas, context);
+      this.drawBars(canvas, context);
     }
   }
 
