@@ -47,12 +47,7 @@ export default class OffsetHistogram extends Vue {
 
       context.moveTo(this.cellSize + this.fontSize, verticalBase);
       for (let x = 0; x < amountDifferentOffsets; x += 1) {
-        // const pair = sorted[x];
-        const offset = Object.keys(this.histogram.valueAmounts)[x];
-        const pair = {
-          offset: +offset,
-          amount: this.histogram.valueAmounts[offset],
-        }
+        const pair = sorted[x];
         const barHeight = (pair.amount / this.histogram.maxCount) * maxDrawHeight;
         context.fillRect(
             horizontalBase + (x * xStepSize),

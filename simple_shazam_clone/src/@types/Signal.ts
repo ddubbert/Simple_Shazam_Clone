@@ -11,7 +11,7 @@ export interface SpectrumData {
 
 export interface SpectrogramPoint {
   point: FreqMagPair;
-  time: number;
+  time: string;
 }
 
 export interface SpectrogramData {
@@ -26,6 +26,6 @@ export interface HashPair {
 }
 
 export interface HashToken {
-  offset: number;
+  offset: string;
   hash: string;
 }

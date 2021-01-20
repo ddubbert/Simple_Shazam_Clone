@@ -81,6 +81,9 @@ export default class RecordSong extends Vue {
   @Prop() private fanOutFactor!: number;
   @Prop() private constellationYGroupAmount!: number;
   @Prop() private constellationXGroupSize!: number;
+  @Prop() private fanOutStepFactor!: number;
+  @Prop() private magnitudeThreshhold!: number;
+  @Prop() private targetZoneHeight!: number;
 
   isRecording = false;
 
@@ -95,11 +98,16 @@ export default class RecordSong extends Vue {
       this.fanOutFactor,
       this.constellationYGroupAmount,
       this.constellationXGroupSize,
+      this.fanOutStepFactor,
+      this.magnitudeThreshhold,
+      this.targetZoneHeight,
   );
 
   selectFile(e?: HTMLInputEvent) {
     if(e && e.target.files) {
       this.isRecording = true;
+      this.currentStep = `Uploading ${e.target.files.length} songs...`;
+
       for(let i = 0; i < e.target.files.length; i++) {
         const file = e.target.files[i];
         this.recordFromFile(file, file.name);
@@ -118,7 +126,7 @@ export default class RecordSong extends Vue {
       console.log('Calculating Spectrogram...');
       const spectrogram = this.audioProcessor.calculateSpectrogram(timeDomain);
 
-      console.log('Calculating Spectrogram...');
+      console.log('Calculating Constellation Map...');
       const constellation = this.audioProcessor.getConstellationPoints(spectrogram);
 
       console.log('Calculating Hashes...');
@@ -128,13 +136,14 @@ export default class RecordSong extends Vue {
       this.database.addSong(songName, decoded.duration, hashTokens);
 
       console.log('Finished...');
-      this.currentStep = 'Select Song or Song Hashes File...';
 
       this.isRecording = false;
 
       this.songs.splice(0);
       this.database.getSongs().forEach((s) => {
         this.songs.push(s);
+      }, () => {
+        this.currentStep = 'Wrong File Type...';
       });
     });
   }
@@ -146,7 +155,11 @@ export default class RecordSong extends Vue {
 
     fReader.onload = (e?: ProgressEvent<FileReader>) => {
       if(e && fReader.result) {
-        audio.src = fReader.result as string;
+        try {
+          audio.src = fReader.result as string;
+        } catch {
+          this.currentStep = 'Wrong File Type...';
+        }
         this.decodeFile(fReader.result as ArrayBuffer, songName);
       }
     };
@@ -159,7 +172,11 @@ export default class RecordSong extends Vue {
     fReader.readAsText(file, 'UTF-8');
     fReader.onload = (e?: ProgressEvent<FileReader>) => {
       if(e && fReader.result) {
-        this.database.uploadHashes(JSON.parse(fReader.result as string));
+        try{
+          this.database.uploadHashes(JSON.parse(fReader.result as string));
+        } catch {
+          this.currentStep = 'Wrong File Type...';
+        }
 
         this.songs.splice(0);
         this.database.getSongs().forEach((s) => {
@@ -172,11 +189,10 @@ export default class RecordSong extends Vue {
   uploadHeashFiles(e?: HTMLInputEvent) {
     if(e && e.target.files) {
       this.isRecording = true;
-      this.currentStep = 'Uploading Hashes...';
+      this.currentStep = `Uploading hashes of ${e.target.files.length} songs...`;
 
       for(let i = 0; i < e.target.files.length; i++) {
         this.readHeashFile(e.target.files[i]);
-        this.currentStep = `Hashes of ${i + 1} songs uploaded...`;
       }
 
       this.isRecording = false;

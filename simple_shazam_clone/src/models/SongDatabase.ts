@@ -1,7 +1,8 @@
 import {HashToken} from '@/@types/Signal';
+import BigNumber from 'bignumber.js'
 
 interface SongHashToken {
-  offset: number;
+  offset: string;
   songName: string;
   hash: string;
 }
@@ -25,8 +26,8 @@ interface SongMap {
 }
 
 export interface MatchingPoint {
-  songOffset: number;
-  sampleOffset: number;
+  songOffset: string;
+  sampleOffset: string;
 }
 
 interface PointMap {
@@ -39,7 +40,7 @@ interface NumberHashMap {
 
 export interface Histogram {
   maxCount: number;
-  maxValue: number;
+  maxValue: string;
   valueAmounts: NumberHashMap;
 }
 
@@ -53,7 +54,7 @@ export interface SongDatabase {
   getSongs(): Song[];
   uploadHashes(data: SongFileData): void;
   addSong(name: string, duration: number, hashes: HashToken[]): void;
-  getSongFor(sampleTokens: HashToken[]): MatchingSong;
+  getSongFor(sampleTokens: HashToken[]): MatchingSong[];
 }
 
 export function createSongDatabase(): SongDatabase {
@@ -107,63 +108,65 @@ export function createSongDatabase(): SongDatabase {
     a.dispatchEvent(e);
   }
 
-  function getHistogram(arr: number[]): Histogram {
+  function getHistogram(arr: string[]): Histogram {
     const valueAmounts = {} as NumberHashMap;
-    let maxCount = 0, maxValue = 0, m;
+    let maxCount = 0, maxValue = '0', m;
     for (let i=0, iLen=arr.length; i<iLen; i++) {
       m = arr[i];
 
-      if (!valueAmounts[m]) {
-        valueAmounts[m] = 0;
+      if (!valueAmounts[m.toString()]) {
+        valueAmounts[m.toString()] = 0;
       }
-      ++valueAmounts[m];
+      ++valueAmounts[m.toString()];
 
-      if (valueAmounts[m] > maxCount) {
-        maxCount = valueAmounts[m];
+      if (valueAmounts[m.toString()] > maxCount) {
+        maxCount = valueAmounts[m.toString()];
         maxValue = m;
       }
     }
+
     return { maxCount, maxValue, valueAmounts };
   }
 
-  function getBestMatch(matchingSongs: PointMap): MatchingSong {
+  function getBestMatch(matchingSongs: PointMap): MatchingSong[] {
     if(Object.keys(matchingSongs).length === 0) throw Error('No Song found');
     if(Object.keys(matchingSongs).length === 1) {
       const songName = Object.keys(matchingSongs)[0];
       const offsets = matchingSongs[songName]
-        .map(({songOffset, sampleOffset}) => Math.abs(songOffset - sampleOffset));
+        .map(({songOffset, sampleOffset}) => new BigNumber(songOffset).minus(sampleOffset).toString());
 
-      return {
+      return [{
         song: songs[songName],
         matchingPoints: matchingSongs[songName],
         histogram: getHistogram(offsets),
-      }
+      }];
     } else {
-      let bestMatch: MatchingSong | undefined;
+      let bestMatches: MatchingSong[] = [];
 
       Object.keys(matchingSongs).forEach((songName) => {
         const points = matchingSongs[songName];
         const offsets = points
-          .map(({songOffset, sampleOffset}) => Math.abs(songOffset - sampleOffset));
+          .map(({songOffset, sampleOffset}) => new BigNumber(songOffset).minus(sampleOffset).toString());
         const histogram = getHistogram(offsets);
         console.log(songName);
         console.log(histogram);
 
-        if(!bestMatch || histogram.maxCount > bestMatch.histogram.maxCount) {
-          bestMatch = {
-            song: songs[songName],
-            matchingPoints: matchingSongs[songName],
-            histogram,
-          }
-        }
+        const match = {
+          song: songs[songName],
+          matchingPoints: matchingSongs[songName],
+          histogram,
+        };
+
+        bestMatches.push(match);
+        bestMatches.sort((a, b) => b.histogram.maxCount - a.histogram.maxCount);
+        bestMatches = bestMatches.slice(0,3);
       })
 
-      if(bestMatch) return bestMatch;
-      else throw Error('Nothing found');
+      return bestMatches;
     }
   }
 
-  function getSongFor(sampleTokens: HashToken[]): MatchingSong {
+  function getSongFor(sampleTokens: HashToken[]): MatchingSong[] {
     const matchingSongs: PointMap = {};
     if(Object.keys(songs).length === 0) throw Error('No Song Found.');
 

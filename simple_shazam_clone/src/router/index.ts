@@ -8,11 +8,14 @@ Vue.use(VueRouter)
 const database = createSongDatabase();
 const sampleRate = 44100;
 const bufferSize = 4096;
-const stftWindowSize = 1024;
+const stftWindowSize = 2048;
 const stftHopSize = stftWindowSize / 2;
 const fanOutFactor = 10;
-const constellationYGroupAmount = 10;
-const constellationXGroupSize = 64;
+const constellationYGroupAmount = 20;
+const constellationXGroupSize = 1;
+const fanOutStepFactor = 2;
+const targetZoneHeight = 5;
+const magnitudeThreshhold = stftWindowSize / 50;
 
 const routes: Array<RouteConfig> = [
   {
@@ -28,6 +31,9 @@ const routes: Array<RouteConfig> = [
       fanOutFactor,
       constellationYGroupAmount,
       constellationXGroupSize,
+      fanOutStepFactor,
+      magnitudeThreshhold,
+      targetZoneHeight,
     }
   },
   {
@@ -46,6 +52,9 @@ const routes: Array<RouteConfig> = [
       fanOutFactor,
       constellationYGroupAmount,
       constellationXGroupSize,
+      fanOutStepFactor,
+      magnitudeThreshhold,
+      targetZoneHeight,
     }
   }
 ]

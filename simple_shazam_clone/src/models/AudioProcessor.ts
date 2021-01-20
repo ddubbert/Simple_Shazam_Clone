@@ -1,4 +1,5 @@
 import {FreqMagPair, HashPair, HashToken, SpectrogramData, SpectrogramPoint, SpectrumData} from '@/@types/Signal';
+import { BigNumber } from "bignumber.js";
 const fft = require('fft-js').fft,
   fftUtil = require('fft-js').util;
 
@@ -17,6 +18,9 @@ export function createAudioProcessor(
   fanOutFactor: number,
   constellationYGroupAmount: number,
   constellationXGroupSize: number,
+  fanOutStepFactor: number,
+  magnitudeThreshhold: number,
+  targetZoneHeight: number,
   ): AudioProcessor {
   function getTimeDomainData(decoded: AudioBuffer): number[] {
     const channels = [];
@@ -72,7 +76,7 @@ export function createAudioProcessor(
     for(let i = 0; i < frequencies.length; i++) {
       const pair = { frequency: frequencies[i], magnitude: Math.max(magnitudes[i], 0) };
       if (magnitudes[i] > maxPair.magnitude) maxPair = pair;
-      if (magnitudes[i] > 5) maxImportantIndex = i;
+      if (magnitudes[i] > magnitudeThreshhold) maxImportantIndex = i;
       freqMagPairs.push(pair);
     }
 
@@ -115,25 +119,27 @@ export function createAudioProcessor(
   }
 
   function getConstellationPoints(spectrogram: SpectrogramData): SpectrogramPoint[][]  {
-    const stepTime = stftHopSize * 1000 / sampleRate;
+    const stepTime = new BigNumber(stftHopSize * 1000 / sampleRate);
     const yGroupSize = Math.round(spectrogram.windowSpectrums[0].length / constellationYGroupAmount);
-    const xGroupAmount = Math.round(spectrogram.windowSpectrums.length / constellationXGroupSize);
     const constellationPoints: SpectrogramPoint[][] = [];
 
-    for(let i = 0; i < xGroupAmount; i++) {
+    for(let i = 0; i < spectrogram.windowSpectrums.length; i += constellationXGroupSize) {
       constellationPoints.push([]);
       for(let j = 0; j < constellationYGroupAmount; j++) {
-        const xMin = i * constellationXGroupSize;
-        const xMax = Math.min((i + 1) * constellationXGroupSize, spectrogram.windowSpectrums.length);
+        const xMin = i;
+        const xMax = Math.min(
+          xMin + constellationXGroupSize,
+          spectrogram.windowSpectrums.length,
+        );
         const yMin = j * yGroupSize;
         const yMax = Math.min((j + 1) * yGroupSize, spectrogram.windowSpectrums[0].length);
 
         const pointsInGroup: SpectrogramPoint[] = [];
-        for(let x = xMin; x < xMax; x++) {
+        for(let x = xMin; x < xMax; x += 1) {
           for(let y = yMin; y < yMax; y++) {
             pointsInGroup.push({
               point: spectrogram.windowSpectrums[x][y],
-              time: stepTime * x,
+              time: stepTime.multipliedBy((x + 1)).toString(),
             });
           }
         }
@@ -156,11 +162,11 @@ export function createAudioProcessor(
   }
 
   function createHashToken(pair: HashPair): HashToken {
-    const deltaT = pair.second.time - pair.first.time;
+    const deltaT = new BigNumber(pair.second.time).minus(pair.first.time);
 
     return {
       offset: pair.first.time,
-      hash: `${createHashCode(`${pair.first.point.frequency}${pair.second.point.frequency}${deltaT}`)}`,
+      hash: `${createHashCode(`${pair.first.point.frequency}${pair.second.point.frequency}${deltaT.toString()}`)}`,
     }
   }
 
@@ -171,22 +177,36 @@ export function createAudioProcessor(
     for(let i = 0; i < amountPointArrays; i++) {
       const pointArray = constellationPoints[i];
       const arraysAfterCurrent = (amountPointArrays - i) - 1;
-      const amountConnections = (arraysAfterCurrent < fanOutFactor)
-        ? arraysAfterCurrent
-        : fanOutFactor;
+      const zoneHeight = Math.min(targetZoneHeight, pointArray.length);
+      const amountConnections = (
+        arraysAfterCurrent * fanOutStepFactor / fanOutStepFactor < (fanOutFactor * fanOutStepFactor / zoneHeight)
+      )
+        ? arraysAfterCurrent * fanOutStepFactor / fanOutStepFactor
+        : (fanOutFactor * fanOutStepFactor / zoneHeight);
 
       for(let j = 0; j < pointArray.length; j++) {
-        for(let k = 1; k <= amountConnections; k++) {
-          const hashPair = {
-            first: pointArray[j],
-            second: constellationPoints[i + k][j],
-          }
+        const jMin = Math.min(Math.max(j - Math.floor(zoneHeight / 2), 0), pointArray.length - zoneHeight);
+        const jMax = jMin + zoneHeight;
 
-          hashes.push(createHashToken(hashPair));
+        for(let h = jMin; h < jMax; h++) {
+          let unusablePoints = 0;
+          for(let k = fanOutStepFactor; k <= amountConnections + unusablePoints; k += fanOutStepFactor) {
+            const hashPair = {
+              first: pointArray[j],
+              second: constellationPoints[i + k][h],
+            }
+
+            if(hashPair.first.point.magnitude > magnitudeThreshhold) {
+              if(hashPair.second.point.magnitude > magnitudeThreshhold) hashes.push(createHashToken(hashPair));
+              else if(amountConnections + unusablePoints + fanOutStepFactor <= arraysAfterCurrent)
+                unusablePoints += fanOutStepFactor;
+            }
+          }
         }
       }
     }
 
+    console.log(hashes);
     return hashes;
   }
 

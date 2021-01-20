@@ -7,6 +7,7 @@
 <script lang="ts">
 import {Component, Prop, Vue, Watch} from 'vue-property-decorator';
 import {MatchingPoint} from '@/models/SongDatabase'
+import BigNumber from 'bignumber.js'
 
 @Component
 export default class OffsetScatterplot extends Vue {
@@ -21,7 +22,7 @@ export default class OffsetScatterplot extends Vue {
   fontSize = (this.cellSize >= 20) ? this.cellSize : this.cellSize * 2;
 
   drawPoints(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
-    let maxX = 0;
+    let maxX = '0';
 
     if(this.points.length > 0) {
       const verticalBase = canvas.height - this.fontSize - this.cellSize * 2;
@@ -31,7 +32,7 @@ export default class OffsetScatterplot extends Vue {
 
       for(let i = 0; i < this.points.length; i++) {
         const currentPoint = this.points[i];
-        if (currentPoint.songOffset > maxX) maxX = currentPoint.songOffset;
+        if (new BigNumber(currentPoint.songOffset).comparedTo(maxX) > 0) maxX = currentPoint.songOffset;
       }
 
       context.save();
@@ -41,8 +42,8 @@ export default class OffsetScatterplot extends Vue {
       context.moveTo(this.cellSize + this.fontSize, verticalBase);
       this.points.forEach((point) => {
         context.fillRect(
-            horizontalBase + (point.songOffset / maxX * maxDrawWidth) - 1,
-            verticalBase - (point.sampleOffset / (this.maxTime * 1000) * maxDrawHeight) - 1,
+            horizontalBase + (new BigNumber(point.songOffset).dividedBy(maxX).toNumber() * maxDrawWidth) - 1,
+            verticalBase - (new BigNumber(point.sampleOffset).toNumber() / (this.maxTime * 1000) * maxDrawHeight) - 1,
             2,
             2,
         );
@@ -55,7 +56,7 @@ export default class OffsetScatterplot extends Vue {
     this.drawAxis(canvas, context, maxX);
   }
 
-  drawAxis(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D, maxX: number) {
+  drawAxis(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D, maxX: string) {
     const verticalBase = canvas.height - this.fontSize - this.cellSize * 2;
     const horizontalBase = this.fontSize + this.cellSize;
     const maxDrawWidth = canvas.width - this.fontSize * 2 - this.cellSize * 2;
@@ -79,7 +80,7 @@ export default class OffsetScatterplot extends Vue {
       const xStepSize = maxDrawWidth / 10;
       const yStepSize = maxDrawHeight / 5;
 
-      const xLabelSteps = maxX / 10;
+      const xLabelSteps = new BigNumber(maxX).dividedBy(10).toNumber();
 
       for (let x = 0; x < 10; x += 1) {
         context.moveTo(x * xStepSize + horizontalBase, verticalBase + this.cellSize / 2);

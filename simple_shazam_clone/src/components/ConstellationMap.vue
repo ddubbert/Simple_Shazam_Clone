@@ -17,6 +17,7 @@ export default class ConstellationMap extends Vue {
   @Prop() private maxTime!: number;
   @Prop() private sampleRate!: number;
   @Prop() private maxSpectrogramFreq!: number;
+  @Prop() private magnitudeThreshhold!: number;
 
   drawTimeOut: number | undefined;
 
@@ -35,12 +36,14 @@ export default class ConstellationMap extends Vue {
       context.moveTo(this.cellSize + this.fontSize, verticalBase);
       for(let i = 0; i < this.constellationPoints.length; i++) {
         for(let j = 0; j < this.constellationPoints[0].length; j++) {
-          context.fillRect(
-              horizontalBase + (this.constellationPoints[i][j].time / 1000 / this.maxTime) * maxDrawWidth - 1,
-              verticalBase - (this.constellationPoints[i][j].point.frequency / this.maxSpectrogramFreq) * maxDrawHeight - 1,
-              2,
-              2,
-          );
+          if (this.constellationPoints[i][j].point.magnitude > this.magnitudeThreshhold) {
+            context.fillRect(
+                horizontalBase + (Number(this.constellationPoints[i][j].time) / 1000 / this.maxTime) * maxDrawWidth - 1,
+                verticalBase - (this.constellationPoints[i][j].point.frequency / this.maxSpectrogramFreq) * maxDrawHeight - 1,
+                2,
+                2,
+            );
+          }
         }
       }
 

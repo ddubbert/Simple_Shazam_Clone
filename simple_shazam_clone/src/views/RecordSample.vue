@@ -1,6 +1,15 @@
 <template>
   <div class="home">
     <div>
+      <h4>Select Microphone:</h4>
+      <select v-model="selectedMic">
+        <option v-for="device in deviceList" :key="device.text" :value="device.value">
+          {{ device.text }}
+        </option>
+      </select>
+    </div>
+
+    <div>
       <button
           class="recordButton"
           @click="recordFromMicrophone"
@@ -27,13 +36,13 @@
     </div>
 
     <div>
-      <h1> Song is: </h1>
+      <h1> Song might be: </h1>
     </div>
 
-    <div>
-      <h2>
-          {{currentSong}}
-      </h2>
+    <div v-for="(song, i) in currentSongs" :key="song">
+      <h3>
+          {{`${i + 1}: ${song}`}}
+      </h3>
     </div>
 
     <div>
@@ -99,6 +108,7 @@
           :max-time="recordingTime"
           :sample-rate="sampleRate"
           :max-spectrogram-freq="maxSpectrogramFreq"
+          :magnitude-threshhold="magnitudeThreshhold"
       ></ConstellationMap>
     </div>
 
@@ -146,7 +156,7 @@ import {
   SpectrogramPoint,
 } from '../@types/Signal';
 import { createAudioProcessor, AudioProcessor} from '@/models/AudioProcessor';
-import {Histogram, MatchingPoint, MatchingSong, SongDatabase} from '@/models/SongDatabase'
+import {Histogram, MatchingPoint, MatchingSong, SongDatabase} from '@/models/SongDatabase';
 
 @Component({
   components: {
@@ -167,6 +177,9 @@ export default class RecordSample extends Vue {
   @Prop() private fanOutFactor!: number;
   @Prop() private constellationYGroupAmount!: number;
   @Prop() private constellationXGroupSize!: number;
+  @Prop() private fanOutStepFactor!: number;
+  @Prop() private magnitudeThreshhold!: number;
+  @Prop() private targetZoneHeight!: number;
 
   isRecording = false;
 
@@ -192,7 +205,7 @@ export default class RecordSample extends Vue {
 
   histogramData: Histogram = {
     maxCount: 0,
-    maxValue: 0,
+    maxValue: 0n,
     valueAmounts: {},
   }
 
@@ -206,7 +219,11 @@ export default class RecordSample extends Vue {
 
   currentStep = 'Start Recording...';
 
-  currentSong = '...';
+  currentSongs: string[] = [];
+
+  deviceList: { value: string; text: string }[] = [];
+
+  selectedMic = '';
 
   audioProcessor: AudioProcessor = createAudioProcessor(
       this.sampleRate,
@@ -215,6 +232,9 @@ export default class RecordSample extends Vue {
       this.fanOutFactor,
       this.constellationYGroupAmount,
       this.constellationXGroupSize,
+      this.fanOutStepFactor,
+      this.magnitudeThreshhold,
+      this.targetZoneHeight,
   );
 
   generateSinWave(amountSamples: number, samplingRate: number, amplitude: number, frequency: number): number[] {
@@ -243,10 +263,12 @@ export default class RecordSample extends Vue {
     const hashTokens = this.audioProcessor.calculateHashes(constellation);
 
     console.log('Comparing Hashes And Finding Song...');
-    let song: MatchingSong;
+    let songs: MatchingSong[];
     try {
-      song = this.database.getSongFor(hashTokens);
-      this.currentSong = `${song.song.name} (Duration: ${Math.round(song.song.duration)}  seconds).`;
+      songs = this.database.getSongFor(hashTokens);
+      this.currentSongs = songs.map((it) =>
+          `${it.song.name} (Duration: ${Math.round(it.song.duration)}  seconds).
+          Max offset count ${it.histogram.maxCount} at ${Math.round(Number(it.histogram.maxValue)) / 1000}.`);
     } catch(e) {
       this.currentStep = 'No Matching Song Found.';
     }
@@ -259,7 +281,7 @@ export default class RecordSample extends Vue {
 
       console.log('Drawing time domain...');
       this.timeDomain = timeDomain;
-      this.maxAmp = timeDomain.reduce((max, el) => (el > max) ? el : max);
+      this.maxAmp = timeDomain.reduce((max, el) => (Math.abs(el) > max) ? Math.abs(el) : max);
 
       console.log('Drawing freq domain...');
       this.maxMag = freqDomain.maxPair.magnitude;
@@ -272,15 +294,16 @@ export default class RecordSample extends Vue {
       this.maxSpectrogramFreq = spectrogram.maxFreq;
       this.constellationPoints = constellation;
 
-      if(song) {
+      if(songs) {
         console.log('Drawing scatterplot...');
-        this.scatterplotPoints = song.matchingPoints;
+        this.scatterplotPoints = songs[0].matchingPoints;
 
         console.log('Drawing histogram...');
-        this.histogramData = song.histogram;
+        this.histogramData = songs[0].histogram;
       }
 
       console.log('Finished...');
+      this.currentStep = 'Start Recording...';
       this.isRecording = false;
     }, 1000)
   }
@@ -288,11 +311,11 @@ export default class RecordSample extends Vue {
   recordFromMicrophone() {
     if (!this.isRecording) {
       this.currentStep = 'Recording...';
-      this.currentSong = '...';
+      this.currentSongs.splice(0);
       this.isRecording = true;
       this.recordingCount = this.recordingTime;
 
-      navigator.mediaDevices.getUserMedia({ audio: true })
+      navigator.mediaDevices.getUserMedia({ audio: { deviceId: this.selectedMic }})
         .then(stream => {
           const audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: this.sampleRate });
           this.sampleRate = audioContext.sampleRate;
@@ -354,17 +377,37 @@ export default class RecordSample extends Vue {
         1,
     );
 
-    const cosineWave = this.generateCosWave(
+    /*const cosineWave = this.generateCosWave(
         amountSamplesForRecordingTime,
         this.sampleRate,
         1,
-        2,
-    );
+        1,
+    );*/
 
-    const wave = sineWave.map((el, i) => el + cosineWave[i]);
-    const max = wave.reduce((acc, el) => (acc > Math.abs(el)) ? acc : Math.abs(el));
-    this.maxAmp = max;
-    this.timeDomain = wave;
+    // const wave = sineWave.map((el, i) => el + cosineWave[i]);
+    // const max = wave.reduce((acc, el) => (acc > Math.abs(el)) ? acc : Math.abs(el));
+    this.maxAmp = 1;//max;
+    this.timeDomain = sineWave;
+  }
+
+  showDeviceList(deviceInfos: MediaDeviceInfo[]) {
+    for (let i = 0; i !== deviceInfos.length; ++i) {
+      const deviceInfo = deviceInfos[i];
+      if (deviceInfo.kind === 'audioinput') {
+        const text = deviceInfo.label ||
+            'Microphone ' + (this.deviceList.length + 1);
+        this.deviceList.push({ value: deviceInfo.deviceId, text });
+        if(i === 0) this.selectedMic = deviceInfo.deviceId;
+      }
+    }
+  }
+
+  mounted() {
+    navigator.mediaDevices.enumerateDevices()
+        .then(this.showDeviceList)
+        .catch((e) => {
+          console.log(e);
+        });
   }
 }
 </script>
