@@ -45,7 +45,7 @@
       <WaveChart
           class="wave"
           :c-width="1200"
-          :c-height="600"
+          :c-height="400"
           :cell-size="20"
           :time-domain="timeDomain"
           :maxTime="recordingTime"

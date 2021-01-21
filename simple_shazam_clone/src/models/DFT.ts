@@ -59,7 +59,7 @@ export function dftStepWithK(timeDomain: number[], fs: number, k: number): DFTSt
     step.center.y += complex.y;
   }
 
-  step.freqMag.magnitude = Math.sqrt(Math.pow(step.center.x, 2) + Math.pow(step.center.y, 2))
+  step.freqMag.magnitude = Math.sqrt(Math.pow(step.center.x, 2) + Math.pow(step.center.y, 2));
 
   return step;
 }
@@ -73,7 +73,7 @@ export function dft(timeDomain: number[], fs: number): SpectrumData {
   for(let k = 0; k < N; k++) {
     const freqMag = dftStepWithK(timeDomain, fs, k).freqMag;
     freqMagPairs.push(freqMag);
-    if(freqMag.magnitude > maxPair.magnitude) maxPair = freqMag;
+    if(freqMag.magnitude > maxPair.magnitude) maxPair = {...freqMag};
   }
 
   return { maxPair, maxImportantIndex, freqMagPairs };

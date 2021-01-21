@@ -43,7 +43,7 @@
       <WaveChart
           class="wave"
           :c-width="1200"
-          :c-height="600"
+          :c-height="400"
           :cell-size="20"
           :time-domain="timeDomain"
           :maxTime="time"
@@ -65,18 +65,6 @@
         :spectrum-pairs="spectrumPairs"
         :maxMag="maxMag"
         :sample-rate="sampleRate"
-      ></FreqChart>
-    </div>
-
-    <div>
-      <FreqChart
-          class="wave"
-          :c-width="1200"
-          :c-height="400"
-          :cell-size="20"
-          :spectrum-pairs="selfPairs"
-          :maxMag="selfMaxMag"
-          :sample-rate="sampleRate"
       ></FreqChart>
     </div>
 
@@ -105,11 +93,10 @@
 </template>
 
 <script lang="ts">
-import {Component, Prop, Vue, Watch} from 'vue-property-decorator';
+import {Component, Vue, Watch} from 'vue-property-decorator';
 import WaveChart from '@/components/WaveChart.vue';
 import FreqChart from '@/components/FreqChart.vue';
 import Fourier from '@/components/Fourier.vue';
-import { createAudioProcessor, AudioProcessor} from '@/models/AudioProcessor';
 import {FreqMagPair} from '@/@types/Signal';
 import {dft} from '@/models/DFT';
 
@@ -121,19 +108,9 @@ import {dft} from '@/models/DFT';
   },
 })
 export default class SinusiodDrawer extends Vue {
-  @Prop() private bufferSize!: number;
-  @Prop() private stftWindowSize!: number;
-  @Prop() private stftHopSize!: number;
-  @Prop() private fanOutFactor!: number;
-  @Prop() private constellationYGroupAmount!: number;
-  @Prop() private constellationXGroupSize!: number;
-  @Prop() private fanOutStepFactor!: number;
-  @Prop() private magnitudeThreshhold!: number;
-  @Prop() private targetZoneHeight!: number;
-
   sampleRate = 100;
 
-  time = 10;
+  time = 5;
 
   timeDomain: number[] = [];
 
@@ -141,29 +118,13 @@ export default class SinusiodDrawer extends Vue {
 
   maxMag = 0;
 
-  selfMaxMag = 0;
-
   maxAmp = 0;
 
   frequency = 1;
 
   spectrumPairs: FreqMagPair[] = [];
 
-  selfPairs: FreqMagPair[] = [];
-
   testFrequency = 1;
-
-  audioProcessor: AudioProcessor = createAudioProcessor(
-      this.sampleRate,
-      this.stftWindowSize,
-      this.stftHopSize,
-      this.fanOutFactor,
-      this.constellationYGroupAmount,
-      this.constellationXGroupSize,
-      this.fanOutStepFactor,
-      this.magnitudeThreshhold,
-      this.targetZoneHeight,
-  );
 
   generateSinWave(amountSamples: number, samplingRate: number, amplitude: number, frequency: number): number[] {
     return Array.from(Array(amountSamples).keys()).map((x) => {
@@ -210,11 +171,11 @@ export default class SinusiodDrawer extends Vue {
 
   draw() {
     if (this.waves.length > 0) {
-      const amplitudes: number[] = this.waves[0];
+      const amplitudes: number[] = this.waves[0].slice(0);
 
       for (let i = 1; i < this.waves.length; i++){
-        for (let j = 0; j < this.waves[0].length; j++){
-          amplitudes[j] = amplitudes[j] + this.waves[i][j];
+        for (let j = 0; j < amplitudes.length; j++){
+          amplitudes[j] += this.waves[i][j];
         }
       }
 
@@ -222,23 +183,16 @@ export default class SinusiodDrawer extends Vue {
       for(let i = 0; i < amplitudes.length; i++) {
         this.timeDomain.push(amplitudes[i]);
       }
-      this.maxAmp = amplitudes.reduce((acc, el) => acc > Math.abs(el) && acc || Math.abs(el));
+      this.maxAmp = this.waves.length;
 
       this.spectrumPairs.splice(0);
-      const spec = this.audioProcessor.calculateSpectrum(amplitudes);
-      for(let i = 0; i < spec.freqMagPairs.length; i++) {
-        this.spectrumPairs.push(spec.freqMagPairs[i]);
-      }
-      this.maxMag = spec.maxPair.magnitude;
-
-      this.selfPairs.splice(0);
-      const spec2 = dft(amplitudes, this.sampleRate);
-      for(let i = 0; i < spec2.freqMagPairs.length / 2; i++) {
-        const pair = spec2.freqMagPairs[i];
+      const spec = dft(amplitudes, this.sampleRate);
+      for(let i = 0; i < spec.freqMagPairs.length / 2; i++) {
+        const pair = spec.freqMagPairs[i];
         pair.magnitude *= 2;
-        this.selfPairs.push(pair);
+        this.spectrumPairs.push(pair);
       }
-      this.selfMaxMag = spec2.maxPair.magnitude * 2;
+      this.maxMag = spec.maxPair.magnitude * 2;
     } else {
       this.maxAmp = 0;
       this.timeDomain.splice(0);

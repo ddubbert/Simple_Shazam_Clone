@@ -29,7 +29,7 @@ export default class Fourier extends Vue {
     context.save();
     context.beginPath();
     context.strokeStyle = '#43b420';
-    context.lineWidth = 2;
+    context.lineWidth = 4;
 
     const step = dftStepWithFrequency(
         this.timeDomain.map((it) => (it + this.maxAmp) / (2 * this.maxAmp) * maxR),
@@ -48,6 +48,17 @@ export default class Fourier extends Vue {
     }
 
     context.stroke();
+    context.restore();
+
+    context.save();
+    context.beginPath();
+    context.fillStyle = '#000000';
+
+    for(let i = 0; i < step.complexValues.length; i++) {
+      const vector = step.complexValues[i];
+      context.fillRect(horizontalBase + vector.x - 2, verticalBase + vector.y - 2, 4, 4);
+    }
+
     context.restore();
 
     context.save();

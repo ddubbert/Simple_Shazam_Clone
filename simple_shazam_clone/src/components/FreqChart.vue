@@ -67,9 +67,9 @@ export default class FreqChart extends Vue {
     const maxDrawHeight = verticalBase - this.fontSize - this.cellSize;
 
     if(spectrumLength > 0) {
-      const binSize = this.sampleRate / 2 / spectrumLength;
+      const binSize = this.spectrumPairs[1].frequency;
       const xBinSize = maxDrawWidth / spectrumLength;
-      const xStepSize = Math.max(xBinSize, this.cellSize * 2);
+      const xStepSize = this.cellSize * 2;
       const shownBinSize = xStepSize / xBinSize * binSize;
 
       for (let x = 1; x <= maxDrawWidth / xStepSize; x += 1) {
@@ -77,8 +77,9 @@ export default class FreqChart extends Vue {
         context.lineTo(x * xStepSize + horizontalBase, verticalBase + this.cellSize / 2);
 
         if(x%2 === 1) {
+          const text = (shownBinSize <= 10) ? Math.floor(x * shownBinSize * 10) / 10 : Math.floor(x * shownBinSize);
           context.fillText(
-              `${Math.floor(x * shownBinSize * 10) / 10}`,
+              `${text}`,
               x * xStepSize + horizontalBase,
               verticalBase + this.fontSize / 1.5 + this.cellSize / 2,
           )
