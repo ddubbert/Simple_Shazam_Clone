@@ -148,8 +148,6 @@ export function createSongDatabase(): SongDatabase {
         const offsets = points
           .map(({songOffset, sampleOffset}) => new BigNumber(songOffset).minus(sampleOffset).toString());
         const histogram = getHistogram(offsets);
-        console.log(songName);
-        console.log(histogram);
 
         const match = {
           song: songs[songName],

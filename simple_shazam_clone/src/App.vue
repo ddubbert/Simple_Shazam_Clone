@@ -2,7 +2,8 @@
   <div id="app">
     <div id="nav">
       <router-link to="/">Record Sample</router-link> |
-      <router-link to="/RecordSong">Record Song</router-link>
+      <router-link to="/RecordSong">Record Song</router-link> |
+      <router-link to="/Sinusoids">Sinusoids</router-link>
     </div>
     <router-view/>
   </div>

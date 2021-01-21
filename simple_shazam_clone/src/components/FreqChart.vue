@@ -76,11 +76,13 @@ export default class FreqChart extends Vue {
         context.moveTo(x * xStepSize + horizontalBase, verticalBase - this.cellSize / 2);
         context.lineTo(x * xStepSize + horizontalBase, verticalBase + this.cellSize / 2);
 
-        context.fillText(
-            `${Math.floor(x * shownBinSize)}`,
-            x * xStepSize + horizontalBase,
-            verticalBase + this.fontSize / 1.5 + this.cellSize / 2,
-        )
+        if(x%2 === 1) {
+          context.fillText(
+              `${Math.floor(x * shownBinSize * 10) / 10}`,
+              x * xStepSize + horizontalBase,
+              verticalBase + this.fontSize / 1.5 + this.cellSize / 2,
+          )
+        }
       }
     }
 
@@ -185,12 +187,14 @@ export default class FreqChart extends Vue {
     clearTimeout(this.drawTimeOut)
     this.drawTimeOut = setTimeout(() => {
       console.log("Changed Spectrum");
+      console.log(this.spectrumPairs);
       this.onResize();
     }, 3000);
   }
 
   @Watch("maxMag")
   updateMaxMag() {
+    console.log('maxMag');
     clearTimeout(this.drawTimeOut)
     this.drawTimeOut = setTimeout(() => {
       this.onResize();

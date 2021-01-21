@@ -19,14 +19,6 @@
       </button>
 
       <a v-if="isRecording && countDown > 0" id="countdown">{{countDown}}</a>
-
-      <button
-          class="recordButton"
-          @click="drawSin"
-          :disabled="isRecording"
-      >
-        Draw Sinus-Wave
-      </button>
     </div>
 
     <div class="spacer"></div>
@@ -205,7 +197,7 @@ export default class RecordSample extends Vue {
 
   histogramData: Histogram = {
     maxCount: 0,
-    maxValue: 0n,
+    maxValue: '0',
     valueAmounts: {},
   }
 
@@ -237,18 +229,6 @@ export default class RecordSample extends Vue {
       this.targetZoneHeight,
   );
 
-  generateSinWave(amountSamples: number, samplingRate: number, amplitude: number, frequency: number): number[] {
-    return Array.from(Array(amountSamples).keys()).map((x) => {
-      return amplitude * Math.sin(((x / samplingRate)) * (frequency * (2 * Math.PI)));
-    });
-  }
-
-  generateCosWave(amountSamples: number, samplingRate: number, amplitude: number, frequency: number): number[] {
-    return Array.from(Array(amountSamples).keys()).map((x) => {
-      return amplitude * Math.cos(((x / samplingRate)) * (frequency * (2 * Math.PI)));
-    });
-  }
-
   processAudioData(decoded: AudioBuffer) {
     console.log('Calculating Time Domain...');
     const timeDomain = this.audioProcessor.getTimeDomainData(decoded);
@@ -267,8 +247,8 @@ export default class RecordSample extends Vue {
     try {
       songs = this.database.getSongFor(hashTokens);
       this.currentSongs = songs.map((it) =>
-          `${it.song.name} (Duration: ${Math.round(it.song.duration)}  seconds).
-          Max offset count ${it.histogram.maxCount} at ${Math.round(Number(it.histogram.maxValue)) / 1000}.`);
+          `${it.song.name} (Duration: ${Math.round(it.song.duration)} seconds).
+          Max offset count ${it.histogram.maxCount} at ${Math.round(Number(it.histogram.maxValue)) / 1000} seconds.`);
     } catch(e) {
       this.currentStep = 'No Matching Song Found.';
     }
@@ -365,29 +345,6 @@ export default class RecordSample extends Vue {
           }, (waitingTime + this.recordingTime) * 1000);
         });
     }
-  }
-
-  drawSin() {
-    const amountSamplesForRecordingTime = this.sampleRate * this.recordingTime;
-
-    const sineWave = this.generateSinWave(
-        amountSamplesForRecordingTime,
-        this.sampleRate,
-        1,
-        1,
-    );
-
-    /*const cosineWave = this.generateCosWave(
-        amountSamplesForRecordingTime,
-        this.sampleRate,
-        1,
-        1,
-    );*/
-
-    // const wave = sineWave.map((el, i) => el + cosineWave[i]);
-    // const max = wave.reduce((acc, el) => (acc > Math.abs(el)) ? acc : Math.abs(el));
-    this.maxAmp = 1;//max;
-    this.timeDomain = sineWave;
   }
 
   showDeviceList(deviceInfos: MediaDeviceInfo[]) {

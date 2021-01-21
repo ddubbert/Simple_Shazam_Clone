@@ -206,7 +206,6 @@ export function createAudioProcessor(
       }
     }
 
-    console.log(hashes);
     return hashes;
   }
 
