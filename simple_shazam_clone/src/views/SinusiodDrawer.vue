@@ -40,6 +40,10 @@
     <div class="spacer"></div>
 
     <div>
+      <h1> Time domain: </h1>
+    </div>
+
+    <div>
       <WaveChart
           class="wave"
           :c-width="1200"
@@ -73,7 +77,7 @@
     </div>
 
     <div class="spacer">
-      <label class="inputLabel">Frequency:</label>
+      <label class="inputLabel">Test-Frequency:</label>
       <input type="number" v-model="testFrequency" :step='0.01'/>
     </div>
 

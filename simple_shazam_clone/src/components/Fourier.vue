@@ -43,7 +43,7 @@ export default class Fourier extends Vue {
       if(i === 0) {
         context.moveTo(horizontalBase + vector.x, verticalBase + vector.y);
       } else {
-        context.lineTo(horizontalBase + vector.x, verticalBase + vector.y);
+        context.lineTo(horizontalBase + vector.x, verticalBase - vector.y);
       }
     }
 
@@ -56,7 +56,7 @@ export default class Fourier extends Vue {
 
     for(let i = 0; i < step.complexValues.length; i++) {
       const vector = step.complexValues[i];
-      context.fillRect(horizontalBase + vector.x - 2, verticalBase + vector.y - 2, 4, 4);
+      context.fillRect(horizontalBase + vector.x - 2, verticalBase - vector.y - 2, 4, 4);
     }
 
     context.restore();
@@ -68,7 +68,7 @@ export default class Fourier extends Vue {
     context.fillStyle = '#FF6600';
     context.arc(
         horizontalBase + step.center.x / this.timeDomain.length,
-        verticalBase + step.center.y / this.timeDomain.length,
+        verticalBase - step.center.y / this.timeDomain.length,
         maxR / 20,
         0,
         2 * Math.PI,
@@ -116,7 +116,7 @@ export default class Fourier extends Vue {
 
     context.beginPath()
     context.setLineDash([5, 15]);
-    context.arc(horizontalBase, verticalBase, 1 / this.maxAmp * maxR, 0, 2 * Math.PI);
+    context.arc(horizontalBase, verticalBase, 1 / 2 * maxR, 0, 2 * Math.PI);
     context.stroke();
 
     context.restore();
@@ -191,7 +191,7 @@ export default class Fourier extends Vue {
     this.drawTimeOut = setTimeout(() => {
       console.log("Changed TimeDomain");
       this.onResize();
-    }, 3000);
+    }, 2000);
   }
 
   @Watch("testFrequency")
@@ -200,7 +200,7 @@ export default class Fourier extends Vue {
     this.drawTimeOut = setTimeout(() => {
       console.log("Changed K");
       this.onResize();
-    }, 3000);
+    }, 2000);
   }
 }
 </script>

@@ -203,7 +203,7 @@ export default class ConstellationMap extends Vue {
     this.drawTimeOut = setTimeout(() => {
       console.log("Changed Constellation Points");
       this.onResize();
-    }, 3000);
+    }, 2000);
   }
 }
 </script>

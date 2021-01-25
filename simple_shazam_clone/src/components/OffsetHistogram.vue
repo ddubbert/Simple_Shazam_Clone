@@ -201,7 +201,7 @@ export default class OffsetHistogram extends Vue {
     this.drawTimeOut = setTimeout(() => {
       console.log("Changed Offset Histogram Values");
       this.onResize();
-    }, 3000);
+    }, 2000);
   }
 }
 </script>

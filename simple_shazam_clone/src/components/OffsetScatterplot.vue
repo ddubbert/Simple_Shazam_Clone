@@ -193,7 +193,7 @@ export default class OffsetScatterplot extends Vue {
     this.drawTimeOut = setTimeout(() => {
       console.log("Changed Offset Scatterplot Points");
       this.onResize();
-    }, 3000);
+    }, 2000);
   }
 }
 </script>

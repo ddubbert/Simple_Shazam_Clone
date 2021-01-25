@@ -205,7 +205,7 @@ export default class Spectrogram extends Vue {
     this.drawTimeOut = setTimeout(() => {
       console.log("Changed Spectrogram");
       this.onResize();
-    }, 3000);
+    }, 2000);
   }
 }
 </script>

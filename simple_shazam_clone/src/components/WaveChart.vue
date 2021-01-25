@@ -180,7 +180,7 @@ export default class WaveChart extends Vue {
     this.drawTimeOut = setTimeout(() => {
       console.log("Changed TimeDomain");
       this.onResize();
-    }, 3000);
+    }, 2000);
   }
 }
 </script>

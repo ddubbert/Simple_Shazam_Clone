@@ -190,7 +190,7 @@ export default class FreqChart extends Vue {
       console.log("Changed Spectrum");
       console.log(this.spectrumPairs);
       this.onResize();
-    }, 3000);
+    }, 2000);
   }
 
   @Watch("maxMag")
@@ -199,7 +199,7 @@ export default class FreqChart extends Vue {
     clearTimeout(this.drawTimeOut)
     this.drawTimeOut = setTimeout(() => {
       this.onResize();
-    }, 3000);
+    }, 2000);
   }
 }
 </script>
