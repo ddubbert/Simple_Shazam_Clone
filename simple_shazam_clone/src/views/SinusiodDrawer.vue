@@ -12,7 +12,7 @@
           class="recordButton"
           @click="addSinusWave"
       >
-        Add Sinus-Wave
+        Add Sine-Wave
       </button>
 
       <label class="inputLabel">Wave-Frequency:</label>
@@ -22,7 +22,7 @@
           class="recordButton"
           @click="addCosinusWave"
       >
-        Add Cosinus-Wave
+        Add Cosine-Wave
       </button>
     </div>
 

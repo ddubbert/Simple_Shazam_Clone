@@ -37,10 +37,10 @@ The first canvas that is visible will display the time domain of the recorded sa
 The next step / canvas presents the corresponding frequency domain / spectrum of the signal, showing all frequencies present in the recorded signal (x-axis), together with their magnitudes (y-axis). For calculating this spectrum, a FFT has been used (see function "calculateSpectrum" in the file "src/models/AudioProcessor.ts"). This step is not needed for the Shazam algorithm itself, but gives a nice impression of the overall sample (drawn with "src/components/FreqChart.vue").
 ![spectrum](./images/spectrum.png?raw=true "Spectrum")
 <a name="spectrogram"></a>
-Important for the Shazam algorithm is the calculation of a spectrogram (see function "calculateSpectrogram" in "src/models/AudioProcessor.ts"), where the spectrum is calculate for short time slices. The x-axis of this graph is the time, the y-axis the frequency and a heatmap shows the power of each frequency at each timeslice. The darker the color, the stronger the power of a frequency at that time. Here, the y-axis is reduced to the maximum frequency, that had a magnitude above a threshhold, so that not all the empty space above it will be drawn (drawn with "src/components/Spectrogram.vue").
+Important for the Shazam algorithm is the calculation of a spectrogram (see function "calculateSpectrogram" in "src/models/AudioProcessor.ts"), where the spectrum is calculate for short time slices with the help of an STFT. The x-axis of this graph is the time, the y-axis the frequency and a heatmap shows the power of each frequency at each timeslice. The darker the color, the stronger the power of a frequency at that time. Here, the y-axis is reduced to the maximum frequency, that had a magnitude above a threshhold, so that not all the empty space above it will be drawn (drawn with "src/components/Spectrogram.vue").
 ![spectrogram](./images/spectrogram.png?raw=true "Spectrogram")
 <a name="constellation"></a>
-Nextt up, the algorithm calculates a constellation map, which contains those points of the spectrogram, that provide the highest power in a short area around it. Wang called these points the spectrogram peaks. In this prototype, these points also have to be above a threshhold, so that no unimportant points in otherwise empty spaces will created (see function "getConstellationPoints" in "src/models/AudioProcessor.ts"). The resulting graph is called constellation map, because it reminded Wang of a star (constellation) map (drawn with "src/components/ConstellationMap.vue").
+Next up, the algorithm calculates a constellation map, which contains those points of the spectrogram, that provide the highest power in a short area around it. Wang called these points the spectrogram peaks. In this prototype, these points also have to be above a threshhold, so that no unimportant points in otherwise empty spaces will created (see function "getConstellationPoints" in "src/models/AudioProcessor.ts"). The resulting graph is called constellation map, because it reminded Wang of a star (constellation) map (drawn with "src/components/ConstellationMap.vue").
 ![constellation map](./images/constellationMap.png?raw=true "Constellation Map")
 <a name="song_matching"></a>
 These constellation points are now used for a combinatorial hashing. For that, anchor points are selected and sequentially combined with points in a target zone behind it. The target zones size is determined by a fan out factor, which determins the number of points in such a zone. From these pairs hashes are created (fingerprints), containing the frequency of the anchor point, the frequency of the point from the target zone, and the time difference between these points. For every hash a hash-token object is generated, containing the hash itself and the time offset of the anchor point, which is needed for song matching (see function "calculateHashes" in "src/models/AudioProcessor.ts"). This step has no visualization and was therefore described in a little more detail.
@@ -52,6 +52,22 @@ Each point represents a matching Hash between the sample and the current song. A
 If there is a high peak at one offset, it represents such a diagonal. The amount of this peak then is used as the total score of this song.
 
 ### Sinusoids <a name="sinusoids"></a>
+To demonstrate the way a DFT works, this page enables a user to create a signal from multiple waves with different frequencies. The sample rate and frequency can be chosen, as well as the type of the wave (sine or cosine) he wants to add to the signal (see "src/views/SinusoidDrawer.vue").
+![create signal](./images/createWave.png?raw=true "Create Signal")
+The current combination of waves will be displayed in the time domain, which demonstrates how signals are joined. Following, a cosine wave with a frequency of 3Hz is drawn, and afterwards enhanced by a 10Hz sine wave.
+![cosine wave](./images/cos3hz.png?raw=true "Cosine Wave")
+![sine wave addition](./images/addSine10hz.png?raw=true "Sine wave addition")
+The next canvas shows the spectrum / frequency domain of that signal. To calculate this spectrum, a DFT has been implemented (see "src/models/DFT.ts").
+![spectrum dft](./images/spectrumDFT.png?raw=true "Spectrum DFT")
+Lastly, a user can recreate the DFT manually, by testing different drawing the signal around a circle with different circle frequencies. This is meant to enhance the understanding of the DFT itself (drawn with "src/components/Fourier.vue"). In the following images, three different frequencies are tested: 1Hz, 3Hz and 10Hz. 3Hz and 10Hz are present in the signal, which is shown by a shift of the mass center (circle in the center of the plot).
+![test frequency 1hz](./images/test1hz.png?raw=true "Test Frequency 1Hz")
+![test frequency 3hz](./images/test3hz.png?raw=true "Test Frequency 3Hz")
+![test frequency 10hz](./images/test10hz.png?raw=true "Test Frequency 10Hz")
+If the center of mass is shifted horizontally, it represents the frequency of a cosine wave. If it shifts vertically, it represents a sine wave. If a frequency is found within a cosine and sine part, the shift would be on both axis.
+
+
+
+
 
 
 ## Project setup <a name="project_setup"></a>
