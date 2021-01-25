@@ -55,14 +55,14 @@ If there is a high peak at one offset, it represents such a diagonal. The amount
 To demonstrate the way a DFT works, this page enables a user to create a signal from multiple waves with different frequencies. The sample rate and frequency can be chosen, as well as the type of the wave (sine or cosine) he wants to add to the signal (see "src/views/SinusoidDrawer.vue").
 ![create signal](./images/createWave.png?raw=true "Create Signal")
 The current combination of waves will be displayed in the time domain, which demonstrates how signals are joined. Following, a cosine wave with a frequency of 3Hz is drawn, and afterwards enhanced by a 10Hz sine wave.
-![cosine wave](./images/cos3hz.png?raw=true "Cosine Wave")
+![cosine wave](./images/cos3Hz.png?raw=true "Cosine Wave")
 ![sine wave addition](./images/addSine10hz.png?raw=true "Sine wave addition")
 The next canvas shows the spectrum / frequency domain of that signal. To calculate this spectrum, a DFT has been implemented (see "src/models/DFT.ts").
 ![spectrum dft](./images/spectrumDFT.png?raw=true "Spectrum DFT")
 Lastly, a user can recreate the DFT manually, by testing different drawing the signal around a circle with different circle frequencies. This is meant to enhance the understanding of the DFT itself (drawn with "src/components/Fourier.vue"). In the following images, three different frequencies are tested: 1Hz, 3Hz and 10Hz. 3Hz and 10Hz are present in the signal, which is shown by a shift of the mass center (circle in the center of the plot).
-![test frequency 1hz](./images/test1hz.png?raw=true "Test Frequency 1Hz")
-![test frequency 3hz](./images/test3hz.png?raw=true "Test Frequency 3Hz")
-![test frequency 10hz](./images/test10hz.png?raw=true "Test Frequency 10Hz")
+![test frequency 1hz](./images/test1Hz.png?raw=true "Test Frequency 1Hz")
+![test frequency 3hz](./images/test3Hz.png?raw=true "Test Frequency 3Hz")
+![test frequency 10hz](./images/test10Hz.png?raw=true "Test Frequency 10Hz")
 If the center of mass is shifted horizontally, it represents the frequency of a cosine wave. If it shifts vertically, it represents a sine wave. If a frequency is found within a cosine and sine part, the shift would be on both axis.
 
 
