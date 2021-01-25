@@ -126,11 +126,11 @@ export default class OffsetHistogram extends Vue {
     context.font = `${this.fontSize}px Arial`;
     context.fillText(`${this.histogram.maxCount}`, horizontalBase, this.fontSize * 0.9);
 
-    context.fillText('Offset Song', canvas.width / 2, canvas.height - this.fontSize * 0.25);
+    context.fillText('Offsets (song offset - sample offset)', canvas.width / 2, canvas.height - this.fontSize * 0.25);
 
     context.translate(this.fontSize, (verticalBase - this.fontSize) / 2);
     context.rotate(-Math.PI/2);
-    context.fillText('Offset Sample', 0, 0);
+    context.fillText('Amount', 0, 0);
     context.restore();
   }
 
