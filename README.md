@@ -16,7 +16,8 @@ This project is a prototype of recreating the music recognition algorithm used i
 
 ## Usage <a name="usage"></a>
 The prototype is a website consisting of three pages.
-![pages](./images/pages.png?raw=true "Page Tabs")
+
+<div style="text-align:center"><img src="./images/pages.png" alt="Page Tabs"/></div>
 
 ### Database <a name="database"></a>
 On the "Database" page, a user can start to fill the database with songs, that are later used for recognizing recorded samples. On this page there are two options to choose from.
