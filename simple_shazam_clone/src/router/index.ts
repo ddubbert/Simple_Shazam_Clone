@@ -2,20 +2,11 @@ import Vue from 'vue'
 import VueRouter, { RouteConfig } from 'vue-router'
 import RecordSample from '../views/RecordSample.vue'
 import {createSongDatabase} from '@/models/SongDatabase'
+import {shazamConfig} from '@/models/ShazamConfig'
 
 Vue.use(VueRouter)
 
 const database = createSongDatabase();
-const sampleRate = 44100;
-const bufferSize = 4096;
-const stftWindowSize = 2048;
-const stftHopSize = stftWindowSize / 2;
-const fanOutFactor = 10;
-const constellationYGroupAmount = 20;
-const constellationXGroupSize = 1;
-const fanOutStepFactor = 2;
-const targetZoneHeight = 5;
-const magnitudeThreshhold = stftWindowSize / 50;
 
 const routes: Array<RouteConfig> = [
   {
@@ -24,16 +15,7 @@ const routes: Array<RouteConfig> = [
     component: RecordSample,
     props: {
       database,
-      sampleRate,
-      bufferSize,
-      stftWindowSize,
-      stftHopSize,
-      fanOutFactor,
-      constellationYGroupAmount,
-      constellationXGroupSize,
-      fanOutStepFactor,
-      magnitudeThreshhold,
-      targetZoneHeight,
+      ...shazamConfig,
     }
   },
   {
@@ -45,16 +27,7 @@ const routes: Array<RouteConfig> = [
     component: () => import(/* webpackChunkName: "about" */ '../views/RecordSong.vue'),
     props: {
       database,
-      sampleRate,
-      bufferSize,
-      stftWindowSize,
-      stftHopSize,
-      fanOutFactor,
-      constellationYGroupAmount,
-      constellationXGroupSize,
-      fanOutStepFactor,
-      magnitudeThreshhold,
-      targetZoneHeight,
+      ...shazamConfig,
     }
   },
   {
@@ -65,15 +38,7 @@ const routes: Array<RouteConfig> = [
     // which is lazy-loaded when the route is visited.
     component: () => import(/* webpackChunkName: "about" */ '../views/SinusiodDrawer.vue'),
     props: {
-      bufferSize,
-      stftWindowSize,
-      stftHopSize,
-      fanOutFactor,
-      constellationYGroupAmount,
-      constellationXGroupSize,
-      fanOutStepFactor,
-      magnitudeThreshhold,
-      targetZoneHeight,
+      ...shazamConfig,
     }
   },
 ]

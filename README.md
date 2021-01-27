@@ -52,6 +52,8 @@ Each point represents a matching Hash between the sample and the current song. A
 ![offset histogram](./images/offsetHistogram.png?raw=true "Offset Histogram")
 If there is a high peak at one offset, it represents such a diagonal. The amount of this peak then is used as the total score of this song.
 
+Options like a sampling rate for recording or the STFT window and hop sizes can be changed and tested in the file "src/models/ShazamConfig.ts". Remember to recalculate all of your songfiles if you do changes to these options.
+
 ### Sinusoids <a name="sinusoids"></a>
 To demonstrate the way a DFT works, this page enables a user to create a signal from multiple waves with different frequencies. The sample rate and frequency can be chosen, as well as the type of the wave (sine or cosine) that will be added to the signal (see "src/views/SinusoidDrawer.vue").
 ![create signal](./images/createWave.png?raw=true "Create Signal")
