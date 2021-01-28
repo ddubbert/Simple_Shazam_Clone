@@ -69,6 +69,8 @@ Lastly, a user can recreate the DFT manually, by drawing the signal around a cir
 If the center of mass is shifted horizontally, it represents the frequency of a cosine wave. If it shifts vertically, it represents a sine wave. If a frequency is found within a cosine and sine part, the shift would be on both axis.
 
 ## Project setup <a name="project_setup"></a>
+First of all, this project has only been optimized for and tested with Firefox and Chrome. If you want to try it, use one of these browsers.
+
 ```
 npm install
 ```
